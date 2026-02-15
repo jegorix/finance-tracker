@@ -4,6 +4,10 @@ import com.finance.tracker.domain.Transaction;
 import com.finance.tracker.dto.TransactionDto;
 import org.springframework.stereotype.Component;
 
+import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
+
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 @Component
 public class TransactionMapper {
 

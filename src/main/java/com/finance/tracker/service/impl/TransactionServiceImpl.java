@@ -9,7 +9,6 @@ import com.finance.tracker.service.TransactionService;
 import java.time.LocalDate;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
@@ -17,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
-    @Autowired
+
     private final TransactionRepository repository;
 
     @Override
