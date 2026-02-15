@@ -1,0 +1,17 @@
+services:
+  db:
+    container_name: postgres-finance-tracker
+    image: postgres:18-alpine
+    ports:
+      - 5432:5432
+    env_file: .env
+    volumes:
+      - finance-tracker-data:/usr/lib/postgresql/data
+    networks:
+      - finance-tracker-net
+
+volumes:
+  finance-tracker-data:
+
+networks:
+  finance-tracker-net:
