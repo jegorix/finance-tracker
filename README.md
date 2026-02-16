@@ -8,7 +8,7 @@
 
 ## Связи сущностей
 
-![ER diagramm](./docs/ER-diagramm.png)
+![ER diagram](./docs/ER-diagram.png)
 
 ---
 
@@ -23,4 +23,3 @@
 **Entity Graph:** для избежания N+1 при загрузке связей используются `@EntityGraph` в репозиториях: пользователи со счетами (`findAllWithAccounts`), бюджеты с категориями (`findAllWithCategories`), один бюджет/пользователь по id с нужными связями — один запрос вместо серии по каждому элементу.
 
 **Fetch Join:** загрузка бюджетов вместе с транзакциями реализована через `LEFT JOIN FETCH` (`findAllWithTransactions`). Вызов: `GET /api/v1/budgets?withTransactions=true` — бюджеты и их транзакции подтягиваются одним запросом, без N+1.
-
