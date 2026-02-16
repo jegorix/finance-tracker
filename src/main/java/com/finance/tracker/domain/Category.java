@@ -23,7 +23,7 @@ import java.util.List;
 @Getter
 @Setter
 @EqualsAndHashCode
-@ToString
+@ToString(exclude = "budgets")
 @Table(name = "categories")
 public class Category {
 

@@ -28,7 +28,7 @@ import java.util.List;
 @Getter
 @Setter
 @EqualsAndHashCode
-@ToString
+@ToString(exclude = { "categories", "transactions" })
 @Table(name = "budgets")
 public class Budget {
 
@@ -44,14 +44,14 @@ public class Budget {
 
     private Double spent;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-        name = "budget_category",
-        joinColumns = @JoinColumn(name = "budget_id"),
+        name = "budget_category", 
+        joinColumns = @JoinColumn(name = "budget_id"), 
         inverseJoinColumns = @JoinColumn(name = "category_id"))
     private List<Category> categories = new ArrayList<>();
 
-    @OneToMany(mappedBy = "budget", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "budget", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<Transaction> transactions = new ArrayList<>();
 
 }
