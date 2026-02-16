@@ -1,27 +1,56 @@
 package com.finance.tracker.mapper;
 
+import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.Transaction;
-import com.finance.tracker.dto.TransactionDto;
+import com.finance.tracker.dto.request.TransactionRequest;
+import com.finance.tracker.dto.response.TransactionResponse;
 import org.springframework.stereotype.Component;
 
-import lombok.NoArgsConstructor;
-import lombok.AccessLevel;
-
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
 @Component
 public class TransactionMapper {
 
-    public static TransactionDto toDto(final Transaction entity) {
-        if (entity == null) {
+    public TransactionResponse toResponse(Transaction transaction) {
+        if (transaction == null) {
             return null;
         }
-        return new TransactionDto(entity.getId(), entity.getAmount(), entity.getDate(), entity.getDescription());
+
+        TransactionResponse response = new TransactionResponse();
+        response.setId(transaction.getId());
+        response.setDate(transaction.getDate());
+        response.setAmount(transaction.getAmount());
+        response.setDescription(transaction.getDescription());
+        response.setBudgetId(
+                transaction.getBudget() != null ? transaction.getBudget().getId() : null);
+
+        return response;
     }
 
-    public static Transaction toDomain(final TransactionDto dto) {
-        if (dto == null) {
+    public Transaction fromRequest(TransactionRequest request, Budget budget) {
+        if (request == null) {
             return null;
         }
-        return new Transaction(dto.getId(), dto.getAmount(), dto.getDate(), dto.getDescription());
+
+        Transaction transaction = new Transaction();
+        transaction.setDate(request.getDate());
+        transaction.setAmount(request.getAmount());
+        transaction.setDescription(request.getDescription());
+        transaction.setBudget(budget);
+
+        return transaction;
+    }
+
+    public TransactionRequest toRequest(Transaction transaction) {
+        if (transaction == null) {
+            return null;
+        }
+
+        TransactionRequest request = new TransactionRequest();
+        request.setDate(transaction.getDate());
+        request.setAmount(transaction.getAmount());
+        request.setDescription(transaction.getDescription());
+        request.setBudgetId(
+                transaction.getBudget() != null ? transaction.getBudget().getId() : null);
+
+        return request;
     }
 }
