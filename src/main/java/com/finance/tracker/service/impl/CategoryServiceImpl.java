@@ -82,6 +82,6 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     private List<CategoryResponse> toResponses(List<Category> categories) {
-        return categoryRepository.findAll().stream().map(categoryMapper::toResponse).toList();
+        return categories.stream().map(categoryMapper::toResponse).toList();
     }
 }
