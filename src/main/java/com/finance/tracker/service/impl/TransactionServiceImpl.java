@@ -22,14 +22,14 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public TransactionResponse getById(Long id) {
-        Transaction transaction = repository.findById(id).orElseThrow();
+        final Transaction transaction = repository.findById(id).orElseThrow();
         return TransactionMapper.toResponse(transaction);
     }
 
 
     @Override
     public List<TransactionResponse> getByCategory(String category) {
-        return repository.findByCategory(category)
+        return repository.findByCategoryIgnoreCase(category)
             .stream()
             .map(TransactionMapper::toResponse)
             .collect(Collectors.toList());
