@@ -1,11 +1,15 @@
 package com.finance.tracker.mapper;
+
 import com.finance.tracker.dto.response.TransactionResponse;
 import com.finance.tracker.entity.Transaction;
 
 public class TransactionMapper {
-
+    
+    private TransactionMapper() {
+        throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
+    }
+    
     public static TransactionResponse toResponse(Transaction transaction) {
-
         final TransactionResponse response = new TransactionResponse();
         response.setId(transaction.getId());
         response.setAmount(transaction.getAmount());
@@ -21,5 +25,4 @@ public class TransactionMapper {
         transaction.setDate(request.getDate());
         return transaction;
     }
-
 }
