@@ -27,10 +27,10 @@ public class TransactionController {
     }
 
     @GetMapping
-    public List<TransactionResponse> getByCategory(@RequestParam String category)
-    {
+    public List<TransactionResponse> getByCategory(@RequestParam String category) {
         return service.getByCategory(category);
     }
+
     
 
 }
