@@ -25,6 +25,7 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <checkstyle.config.location>config/checkstyle/checkstyle.xml</checkstyle.config.location>
         <checkstyle.suppressions.location>config/checkstyle/checkstyle-suppressions.xml</checkstyle.suppressions.location>
+        <sonar.organization>egor-nowicki</sonar.organization>
     </properties>
 
     <dependencies>
