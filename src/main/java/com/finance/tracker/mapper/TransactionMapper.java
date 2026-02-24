@@ -1,28 +1,32 @@
-package com.finance.tracker.mapper;
+package com.finance.tracker.service.impl;
 
 import com.finance.tracker.dto.response.TransactionResponse;
 import com.finance.tracker.entity.Transaction;
+import com.finance.tracker.mapper.TransactionMapper;
+import com.finance.tracker.repository.TransactionRepository;
+import com.finance.tracker.service.TransactionService;
+import java.util.List;
+import org.springframework.stereotype.Service;
 
-public class TransactionMapper {
-    
-    private TransactionMapper() {
-        throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
+@Service
+public class TransactionServiceImpl implements TransactionService {
+    private final TransactionRepository repository;
+
+    public TransactionServiceImpl(TransactionRepository repository) {
+        this.repository = repository;
     }
-    
-    public static TransactionResponse toResponse(Transaction transaction) {
-        final TransactionResponse response = new TransactionResponse();
-        response.setId(transaction.getId());
-        response.setAmount(transaction.getAmount());
-        response.setCategory(transaction.getCategory());
-        response.setDate(transaction.getDate());
-        return response;
+
+    @Override
+    public TransactionResponse getById(Long id) {
+        final Transaction transaction = repository.findById(id).orElseThrow();
+        return TransactionMapper.toResponse(transaction);
     }
-    
-    public static Transaction toEntity(Transaction request) {
-        final Transaction transaction = new Transaction();
-        transaction.setAmount(request.getAmount());
-        transaction.setCategory(request.getCategory());
-        transaction.setDate(request.getDate());
-        return transaction;
+
+    @Override
+    public List<TransactionResponse> getByCategory(String category) {
+        return repository.findByCategoryIgnoreCase(category)
+            .stream()
+            .map(TransactionMapper::toResponse)
+            .toList();
     }
 }
