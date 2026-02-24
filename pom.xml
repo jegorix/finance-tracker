@@ -64,7 +64,8 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <configLocation>${checkstyle.config.location}</configLocation>                
+                    <configLocation>${checkstyle.config.location}</configLocation>
+        <suppressionsFile>${checkstyle.suppressions.location}</suppressionsFile>                
                     <encoding>UTF-8</encoding>
                     <consoleOutput>true</consoleOutput>
                     <failsOnError>true</failsOnError>
