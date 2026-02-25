@@ -4,6 +4,10 @@ import com.finance.tracker.entity.Transaction;
 
 public class TransactionMapper {
 
+    private TransactionMapper() {
+        // Utility class; prevent instantiation.
+    }
+
     public static TransactionResponse toResponse(Transaction transaction) {
 
         final TransactionResponse response = new TransactionResponse();

@@ -6,7 +6,6 @@ import com.finance.tracker.mapper.TransactionMapper;
 import com.finance.tracker.repository.TransactionRepository;
 import com.finance.tracker.service.TransactionService;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 
@@ -32,7 +31,7 @@ public class TransactionServiceImpl implements TransactionService {
         return repository.findByCategoryIgnoreCase(category)
             .stream()
             .map(TransactionMapper::toResponse)
-            .collect(Collectors.toList());
+            .toList();
     }
 
 }
