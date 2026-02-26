@@ -108,7 +108,7 @@ public class UserServiceImpl implements UserService {
         return users.stream().map(userMapper::toResponse).toList();
     }
 
-    private UserResponse createUserWithAccountsInternal(UserWithAccountsCreateRequest request) {
+    private UserResponse createUserWithAccounts(UserWithAccountsCreateRequest request) {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
@@ -125,19 +125,18 @@ public class UserServiceImpl implements UserService {
             }
         }
 
-        return userMapper.toResponse(
-                userRepository.findByIdWithAccountsAndTransactions(savedUser.getId()).orElse(savedUser));
+        return userMapper.toResponse(savedUser);
     }
 
     @Override
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public UserResponse createUserWithAccountsNoTx(UserWithAccountsCreateRequest request) {
-        return createUserWithAccountsInternal(request);
+        return createUserWithAccounts(request);
     }
 
     @Override
     @Transactional
     public UserResponse createUserWithAccountsTx(UserWithAccountsCreateRequest request) {
-        return createUserWithAccountsInternal(request);
+        return createUserWithAccounts(request);
     }
 }

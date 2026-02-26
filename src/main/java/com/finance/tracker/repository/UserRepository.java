@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -16,7 +17,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u")
     List<User> findAllWithAccounts();
 
-    @EntityGraph(attributePaths = {"accounts", "transactions"})
+    @EntityGraph(attributePaths = "accounts")
     @Query("SELECT u FROM User u WHERE u.id = :id")
-    java.util.Optional<User> findByIdWithAccountsAndTransactions(Long id);
+    java.util.Optional<User> findByIdWithAccountsAndTransactions(@Param("id") Long id);
 }
