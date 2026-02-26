@@ -16,7 +16,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserWithAccountsCreateRequest {
+public class UserWithAccountsAndTransactionsCreateRequest {
 
     @NotBlank
     @Size(min = 3, max = 50)
@@ -29,5 +29,7 @@ public class UserWithAccountsCreateRequest {
     @Valid
     private List<AccountRequest> accounts;
 
-    private boolean failAfterSecondAccount;
+    @NotEmpty
+    @Valid
+    private List<TransactionRequest> transactions;
 }

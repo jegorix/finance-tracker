@@ -1,14 +1,19 @@
 package com.finance.tracker.service.impl;
 
 import com.finance.tracker.domain.Account;
+import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.Transaction;
 import com.finance.tracker.domain.User;
+import com.finance.tracker.dto.request.AccountRequest;
+import com.finance.tracker.dto.request.TransactionRequest;
 import com.finance.tracker.dto.request.UserRequest;
-import com.finance.tracker.dto.request.UserWithAccountsCreateRequest;
+import com.finance.tracker.dto.request.UserWithAccountsAndTransactionsCreateRequest;
 import com.finance.tracker.dto.response.UserResponse;
 import com.finance.tracker.mapper.AccountMapper;
+import com.finance.tracker.mapper.TransactionMapper;
 import com.finance.tracker.mapper.UserMapper;
 import com.finance.tracker.repository.AccountRepository;
+import com.finance.tracker.repository.BudgetRepository;
 import com.finance.tracker.repository.TransactionRepository;
 import com.finance.tracker.repository.UserRepository;
 import com.finance.tracker.service.UserService;
@@ -31,8 +36,10 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final BudgetRepository budgetRepository;
     private final UserMapper userMapper;
     private final AccountMapper accountMapper;
+    private final TransactionMapper transactionMapper;
 
     @Override
     public UserResponse getUserById(Long id) {
@@ -108,21 +115,31 @@ public class UserServiceImpl implements UserService {
         return users.stream().map(userMapper::toResponse).toList();
     }
 
-    private UserResponse createUserWithAccounts(UserWithAccountsCreateRequest request) {
+    private Budget getBudget(Long budgetId) {
+        return budgetRepository.findById(budgetId)
+                .orElseThrow(() -> new EntityNotFoundException("Budget not found: " + budgetId));
+    }
+
+    private UserResponse createUserWithAccountsAndTransactions(
+            UserWithAccountsAndTransactionsCreateRequest request) {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         User savedUser = userRepository.save(user);
 
-        for (int i = 0; i < request.getAccounts().size(); i++) {
-            Account account = accountMapper.fromRequest(request.getAccounts().get(i));
+        for (AccountRequest accountRequest : request.getAccounts()) {
+            Account account = accountMapper.fromRequest(accountRequest);
             account.setUser(savedUser);
             savedUser.getAccounts().add(account);
             accountRepository.save(account);
+        }
 
-            if (request.isFailAfterSecondAccount() && i == 1) {
-                throw new IllegalStateException("Forced error after saving user and second account");
-            }
+        for (TransactionRequest transactionRequest : request.getTransactions()) {
+            Budget budget = getBudget(transactionRequest.getBudgetId());
+            Transaction transaction = transactionMapper.fromRequest(transactionRequest, budget);
+            transaction.setUser(savedUser);
+            savedUser.getTransactions().add(transaction);
+            transactionRepository.save(transaction);
         }
 
         return userMapper.toResponse(savedUser);
@@ -130,13 +147,15 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public UserResponse createUserWithAccountsNoTx(UserWithAccountsCreateRequest request) {
-        return createUserWithAccounts(request);
+    public UserResponse createUserWithAccountsAndTransactionsNoTx(
+            UserWithAccountsAndTransactionsCreateRequest request) {
+        return createUserWithAccountsAndTransactions(request);
     }
 
     @Override
     @Transactional
-    public UserResponse createUserWithAccountsTx(UserWithAccountsCreateRequest request) {
-        return createUserWithAccounts(request);
+    public UserResponse createUserWithAccountsAndTransactionsTx(
+            UserWithAccountsAndTransactionsCreateRequest request) {
+        return createUserWithAccountsAndTransactions(request);
     }
 }

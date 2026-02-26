@@ -1,7 +1,7 @@
 package com.finance.tracker.controller;
 
 import com.finance.tracker.dto.request.UserRequest;
-import com.finance.tracker.dto.request.UserWithAccountsCreateRequest;
+import com.finance.tracker.dto.request.UserWithAccountsAndTransactionsCreateRequest;
 import com.finance.tracker.dto.response.UserResponse;
 import com.finance.tracker.service.UserService;
 
@@ -56,13 +56,13 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/with-accounts")
-    public ResponseEntity<UserResponse> createUserWithAccounts(
-            @Valid @RequestBody UserWithAccountsCreateRequest request,
+    @PostMapping("/with-accounts-and-transactions")
+    public ResponseEntity<UserResponse> createWithAccountsAndTransactions(
+            @Valid @RequestBody UserWithAccountsAndTransactionsCreateRequest request,
             @RequestParam(defaultValue = "true") boolean transactional) {
         UserResponse response = transactional
-                ? service.createUserWithAccountsTx(request)
-                : service.createUserWithAccountsNoTx(request);
+                ? service.createUserWithAccountsAndTransactionsTx(request)
+                : service.createUserWithAccountsAndTransactionsNoTx(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
