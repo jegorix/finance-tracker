@@ -5,9 +5,10 @@
 
 <module name="Checker">
     <property name="charset" value="UTF-8"/>
-    <property name="severity" value="warning"/>
+    <property name="severity" value="error"/>
 
     <module name="TreeWalker">
+        <!-- Naming conventions -->
         <module name="TypeName"/>
         <module name="MemberName"/>
         <module name="MethodName"/>
@@ -16,19 +17,24 @@
         <module name="ConstantName"/>
         <module name="PackageName"/>
 
+        <!-- Imports -->
         <module name="AvoidStarImport"/>
         <module name="UnusedImports"/>
         <module name="RedundantImport"/>
 
+        <!-- Whitespace -->
         <module name="WhitespaceAround"/>
         <module name="GenericWhitespace"/>
         <module name="NoWhitespaceBefore"/>
 
-        <module name="LeftCurly"/>
-        <module name="RightCurly"/>
+        <module name="ParenPad">
+            <property name="option" value="nospace"/>
+        </module>
+
         <module name="NeedBraces"/>
         <module name="EmptyBlock"/>
 
+        <!-- Code quality -->
         <module name="EmptyStatement"/>
         <module name="EqualsHashCode"/>
         <module name="SimplifyBooleanExpression"/>
@@ -36,18 +42,21 @@
         <module name="OneStatementPerLine"/>
         <module name="MultipleVariableDeclarations"/>
 
+        <!-- Indentation -->
         <module name="Indentation">
             <property name="basicOffset" value="4"/>
             <property name="caseIndent" value="4"/>
         </module>
     </module>
 
+    <!-- Line length (Checker-level in Checkstyle 10.x) -->
     <module name="LineLength">
         <property name="max" value="120"/>
         <property name="ignorePattern"
-                  value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
+                  value="^package.*|^import.*|a href|href|https://|https://|ftp://"/>
     </module>
 
+    <!-- File-level checks -->
     <module name="FileTabCharacter"/>
     <module name="NewlineAtEndOfFile"/>
 </module>
