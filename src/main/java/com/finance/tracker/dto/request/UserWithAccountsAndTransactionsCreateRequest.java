@@ -32,4 +32,6 @@ public class UserWithAccountsAndTransactionsCreateRequest {
     @NotEmpty
     @Valid
     private List<TransactionRequest> transactions;
+
+    private boolean failAfterTransaction;
 }

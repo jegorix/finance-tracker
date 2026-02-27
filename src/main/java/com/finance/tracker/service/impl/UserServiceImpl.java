@@ -167,12 +167,18 @@ public class UserServiceImpl implements UserService {
             accountRepository.save(account);
         }
 
+        int savedTransactions = 0;
         for (TransactionRequest transactionRequest : request.getTransactions()) {
+            if (request.isFailAfterTransaction() && savedTransactions == 1) {
+                throw new IllegalStateException("Forced error while saving second transaction");
+            }
+
             Budget budget = getBudget(transactionRequest.getBudgetId());
             Transaction transaction = transactionMapper.fromRequest(transactionRequest, budget);
             transaction.setUser(savedUser);
             savedUser.getTransactions().add(transaction);
             transactionRepository.save(transaction);
+            savedTransactions++;
         }
 
         return userMapper.toResponse(savedUser);
