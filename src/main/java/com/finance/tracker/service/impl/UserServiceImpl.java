@@ -125,13 +125,13 @@ public class UserServiceImpl implements UserService {
 
     private void ensureAssignableAccounts(List<Account> accounts, Long currentUserId) {
         for (Account account : accounts) {
-            if (account.getUser() == null) {
-                continue;
+            boolean hasOwner = account.getUser() != null;
+            boolean belongsToCurrentUser =
+                    currentUserId != null && hasOwner && currentUserId.equals(account.getUser().getId());
+
+            if (hasOwner && !belongsToCurrentUser) {
+                throw new IllegalStateException("Account " + account.getId() + " already belongs to another user");
             }
-            if (currentUserId != null && currentUserId.equals(account.getUser().getId())) {
-                continue;
-            }
-            throw new IllegalStateException("Account " + account.getId() + " already belongs to another user");
         }
     }
 

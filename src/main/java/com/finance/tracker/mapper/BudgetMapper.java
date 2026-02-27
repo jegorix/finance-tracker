@@ -32,7 +32,8 @@ public class BudgetMapper {
 
         if (includeTransactions) {
             response.setTransactionIds(
-                    budget.getTransactions() != null ? budget.getTransactions().stream().map(Transaction::getId).toList()
+                    budget.getTransactions() != null
+                            ? budget.getTransactions().stream().map(Transaction::getId).toList()
                             : null);
         } else {
             response.setTransactionIds(null);
