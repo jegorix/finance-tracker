@@ -137,13 +137,14 @@ public class UserServiceImpl implements UserService {
 
     private void ensureAssignableTransactions(List<Transaction> transactions, Long currentUserId) {
         for (Transaction transaction : transactions) {
-            if (transaction.getUser() == null) {
-                continue;
+            boolean hasOwner = transaction.getUser() != null;
+            boolean belongsToCurrentUser = currentUserId != null && hasOwner
+                    && currentUserId.equals(transaction.getUser().getId());
+
+            if (hasOwner && !belongsToCurrentUser) {
+                throw new IllegalStateException(
+                        "Transaction " + transaction.getId() + " already belongs to another user");
             }
-            if (currentUserId != null && currentUserId.equals(transaction.getUser().getId())) {
-                continue;
-            }
-            throw new IllegalStateException("Transaction " + transaction.getId() + " already belongs to another user");
         }
     }
 
