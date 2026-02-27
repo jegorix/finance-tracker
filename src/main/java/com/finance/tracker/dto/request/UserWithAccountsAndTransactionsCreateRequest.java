@@ -33,5 +33,5 @@ public class UserWithAccountsAndTransactionsCreateRequest {
     @Valid
     private List<TransactionRequest> transactions;
 
-    private boolean failAfterTransaction;
+    private boolean failAfterAccounts;
 }

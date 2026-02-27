@@ -8,13 +8,11 @@ import java.util.List;
 
 public interface TransactionService {
 
-    TransactionResponse getTransactionById(Long id, boolean withBudget, boolean withUser);
+    TransactionResponse getTransactionById(Long id);
 
-    List<TransactionResponse> getTransactionsByDateRange(
-            LocalDate startDate,
-            LocalDate endDate,
-            boolean withBudget,
-            boolean withUser);
+    List<TransactionResponse> getAllTransactions(boolean withEntityGraph);
+
+    List<TransactionResponse> getTransactionsByDateRange(LocalDate startDate, LocalDate endDate);
 
     TransactionResponse createTransaction(TransactionRequest request);
 

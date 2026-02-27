@@ -18,15 +18,18 @@ import com.finance.tracker.repository.TransactionRepository;
 import com.finance.tracker.repository.UserRepository;
 import com.finance.tracker.service.UserService;
 
-import jakarta.persistence.EntityNotFoundException;
-
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional(readOnly = true)
@@ -44,7 +47,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponse getUserById(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("User not found " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found " + id));
         return userMapper.toResponse(user);
     }
 
@@ -56,8 +59,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse createUser(UserRequest request) {
-        List<Account> accounts = getAccounts(request.getAccountIds());
-        List<Transaction> transactions = getTransactions(request.getTransactionIds());
+        List<Account> accounts = getAccountsIfPresent(request.getAccountIds());
+        List<Transaction> transactions = getTransactionsIfPresent(request.getTransactionIds());
         ensureAssignableAccounts(accounts, null);
         ensureAssignableTransactions(transactions, null);
         User user = userMapper.fromRequest(request, accounts, transactions);
@@ -69,7 +72,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse updateUser(Long id, UserRequest request) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("User not found " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found " + id));
         if (request.getUsername() != null) {
             user.setUsername(request.getUsername());
         }
@@ -98,7 +101,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deleteUser(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new EntityNotFoundException("User not found " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found " + id);
         }
         userRepository.deleteById(id);
     }
@@ -106,17 +109,31 @@ public class UserServiceImpl implements UserService {
     private List<Account> getAccounts(List<Long> accountIds) {
         List<Account> accounts = accountRepository.findAllById(accountIds);
         if (accounts.size() != accountIds.size()) {
-            throw new EntityNotFoundException("Some accounts not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Some accounts not found");
         }
         return accounts;
+    }
+
+    private List<Account> getAccountsIfPresent(List<Long> accountIds) {
+        if (accountIds == null || accountIds.isEmpty()) {
+            return List.of();
+        }
+        return getAccounts(accountIds);
     }
 
     private List<Transaction> getTransactions(List<Long> transactionIds) {
         List<Transaction> transactions = transactionRepository.findAllById(transactionIds);
         if (transactions.size() != transactionIds.size()) {
-            throw new EntityNotFoundException("Some transactions not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Some transactions not found");
         }
         return transactions;
+    }
+
+    private List<Transaction> getTransactionsIfPresent(List<Long> transactionIds) {
+        if (transactionIds == null || transactionIds.isEmpty()) {
+            return List.of();
+        }
+        return getTransactions(transactionIds);
     }
 
     private List<UserResponse> toResponses(List<User> users) {
@@ -130,7 +147,8 @@ public class UserServiceImpl implements UserService {
                     currentUserId != null && hasOwner && currentUserId.equals(account.getUser().getId());
 
             if (hasOwner && !belongsToCurrentUser) {
-                throw new IllegalStateException("Account " + account.getId() + " already belongs to another user");
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "Account " + account.getId() + " already belongs to another user");
             }
         }
     }
@@ -142,19 +160,17 @@ public class UserServiceImpl implements UserService {
                     && currentUserId.equals(transaction.getUser().getId());
 
             if (hasOwner && !belongsToCurrentUser) {
-                throw new IllegalStateException(
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
                         "Transaction " + transaction.getId() + " already belongs to another user");
             }
         }
     }
 
-    private Budget getBudget(Long budgetId) {
-        return budgetRepository.findById(budgetId)
-                .orElseThrow(() -> new EntityNotFoundException("Budget not found: " + budgetId));
-    }
-
     private UserResponse createUserWithAccountsAndTransactions(
             UserWithAccountsAndTransactionsCreateRequest request) {
+        Map<Long, Budget> budgetsById = getBudgetsForTransactions(request.getTransactions());
+
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
@@ -167,21 +183,34 @@ public class UserServiceImpl implements UserService {
             accountRepository.save(account);
         }
 
-        int savedTransactions = 0;
+        if (request.isFailAfterAccounts()) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Forced error right after all accounts were saved");
+        }
+
         for (TransactionRequest transactionRequest : request.getTransactions()) {
-            Budget budget = getBudget(transactionRequest.getBudgetId());
+            Budget budget = budgetsById.get(transactionRequest.getBudgetId());
             Transaction transaction = transactionMapper.fromRequest(transactionRequest, budget);
             transaction.setUser(savedUser);
             savedUser.getTransactions().add(transaction);
             transactionRepository.save(transaction);
-            savedTransactions++;
-
-            if (request.isFailAfterTransaction() && savedTransactions == 1) {
-                throw new IllegalStateException("Forced error right after first transaction was saved");
-            }
         }
 
         return userMapper.toResponse(savedUser);
+    }
+
+    private Map<Long, Budget> getBudgetsForTransactions(List<TransactionRequest> transactions) {
+        Set<Long> budgetIds = transactions.stream()
+                .map(TransactionRequest::getBudgetId)
+                .collect(Collectors.toSet());
+
+        List<Budget> budgets = budgetRepository.findAllById(budgetIds);
+        if (budgets.size() != budgetIds.size()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Some budgets not found");
+        }
+
+        return budgets.stream().collect(Collectors.toMap(Budget::getId, budget -> budget));
     }
 
     @Override

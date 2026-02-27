@@ -15,11 +15,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     List<Transaction> findByDateBetween(LocalDate startDate, LocalDate endDate);
 
-    @EntityGraph(attributePaths = "budget")
     @Query("SELECT t FROM Transaction t")
-    List<Transaction> findAllWithBudget();
+    List<Transaction> findAllTransactions();
 
-    @EntityGraph(attributePaths = "user")
+    @EntityGraph(attributePaths = { "budget", "user" })
     @Query("SELECT t FROM Transaction t")
-    List<Transaction> findAllWithUser();
+    List<Transaction> findAllTransactionsWithEntityGraph();
 }

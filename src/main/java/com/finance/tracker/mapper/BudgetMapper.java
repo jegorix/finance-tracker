@@ -7,6 +7,7 @@ import com.finance.tracker.dto.request.BudgetRequest;
 import com.finance.tracker.dto.response.BudgetResponse;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -51,7 +52,7 @@ public class BudgetMapper {
         budget.setName(request.getName());
         budget.setLimitAmount(request.getLimitAmount());
         budget.setSpent(request.getSpent());
-        budget.setCategories(categories);
+        budget.setCategories(categories != null ? new ArrayList<>(categories) : new ArrayList<>());
 
         return budget;
     }

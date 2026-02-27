@@ -9,14 +9,14 @@ import com.finance.tracker.repository.BudgetRepository;
 import com.finance.tracker.repository.CategoryRepository;
 import com.finance.tracker.service.BudgetService;
 
-import jakarta.persistence.EntityNotFoundException;
-
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional(readOnly = true)
@@ -30,7 +30,7 @@ public class BudgetServiceImpl implements BudgetService {
     @Override
     public BudgetResponse getBudgetById(Long id) {
         Budget budget = budgetRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Budget not found " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Budget not found " + id));
         return budgetMapper.toResponse(budget);
     }
 
@@ -42,8 +42,9 @@ public class BudgetServiceImpl implements BudgetService {
     @Override
     @Transactional
     public BudgetResponse createBudget(BudgetRequest request) {
-        List<Category> categories = getCategories(request.getCategoryIds());
+        List<Category> categories = getCategoriesIfPresent(request.getCategoryIds());
         Budget budget = budgetMapper.fromRequest(request, categories);
+        linkBudgetAndCategories(budget, categories);
         Budget saved = budgetRepository.save(budget);
         return budgetMapper.toResponse(saved);
     }
@@ -52,7 +53,7 @@ public class BudgetServiceImpl implements BudgetService {
     @Transactional
     public BudgetResponse updateBudget(Long id, BudgetRequest request) {
         Budget budget = budgetRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Budget not found " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Budget not found " + id));
         if (request.getName() != null) {
             budget.setName(request.getName());
         }
@@ -64,7 +65,7 @@ public class BudgetServiceImpl implements BudgetService {
         }
         if (request.getCategoryIds() != null) {
             List<Category> categories = getCategories(request.getCategoryIds());
-            budget.setCategories(categories);
+            linkBudgetAndCategories(budget, categories);
         }
         Budget saved = budgetRepository.save(budget);
         return budgetMapper.toResponse(saved);
@@ -74,7 +75,7 @@ public class BudgetServiceImpl implements BudgetService {
     @Transactional
     public void deleteBudget(Long id) {
         if (!budgetRepository.existsById(id)) {
-            throw new EntityNotFoundException("Budget not found " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Budget not found " + id);
         }
         budgetRepository.deleteById(id);
     }
@@ -82,9 +83,30 @@ public class BudgetServiceImpl implements BudgetService {
     private List<Category> getCategories(List<Long> categoryIds) {
         List<Category> categories = categoryRepository.findAllById(categoryIds);
         if (categories.size() != categoryIds.size()) {
-            throw new EntityNotFoundException("Some categories not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Some categories not found");
         }
         return categories;
+    }
+
+    private List<Category> getCategoriesIfPresent(List<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return List.of();
+        }
+        return getCategories(categoryIds);
+    }
+
+    private void linkBudgetAndCategories(Budget budget, List<Category> categories) {
+        for (Category currentCategory : budget.getCategories()) {
+            currentCategory.getBudgets().remove(budget);
+        }
+
+        budget.getCategories().clear();
+        for (Category category : categories) {
+            budget.getCategories().add(category);
+            if (!category.getBudgets().contains(budget)) {
+                category.getBudgets().add(budget);
+            }
+        }
     }
 
     private List<BudgetResponse> toResponses(List<Budget> budgets, boolean includeTransactions) {

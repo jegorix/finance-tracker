@@ -7,14 +7,14 @@ import com.finance.tracker.mapper.AccountMapper;
 import com.finance.tracker.repository.AccountRepository;
 import com.finance.tracker.service.AccountService;
 
-import jakarta.persistence.EntityNotFoundException;
-
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional(readOnly = true)
@@ -27,7 +27,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public AccountResponse getAccountById(Long id) {
         Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Account not found " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found " + id));
         return accountMapper.toResponse(account);
     }
 
@@ -48,7 +48,7 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public AccountResponse updateAccount(Long id, AccountRequest request) {
         Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Account not found " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found " + id));
         if (request.getName() != null) {
             account.setName(request.getName());
         }
@@ -66,7 +66,7 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public void deleteAccount(Long id) {
         if (!accountRepository.existsById(id)) {
-            throw new EntityNotFoundException("Account not found " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found " + id);
         }
         accountRepository.deleteById(id);
     }

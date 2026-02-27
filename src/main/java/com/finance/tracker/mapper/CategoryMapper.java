@@ -6,6 +6,7 @@ import com.finance.tracker.dto.request.CategoryRequest;
 import com.finance.tracker.dto.response.CategoryResponse;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -33,7 +34,7 @@ public class CategoryMapper {
 
         Category category = new Category();
         category.setName(request.getName());
-        category.setBudgets(budgets);
+        category.setBudgets(budgets != null ? new ArrayList<>(budgets) : new ArrayList<>());
 
         return category;
     }

@@ -9,14 +9,14 @@ import com.finance.tracker.repository.BudgetRepository;
 import com.finance.tracker.repository.CategoryRepository;
 import com.finance.tracker.service.CategoryService;
 
-import jakarta.persistence.EntityNotFoundException;
-
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional(readOnly = true)
@@ -30,7 +30,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponse getCategoryById(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Category not found " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found " + id));
         return categoryMapper.toResponse(category);
     }
 
@@ -42,8 +42,9 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public CategoryResponse createCategory(CategoryRequest request) {
-        List<Budget> budgets = getBudgets(request.getBudgetIds());
-        Category category = categoryMapper.fromRequest(request, budgets);
+        List<Budget> budgets = getBudgetsIfPresent(request.getBudgetIds());
+        Category category = categoryMapper.fromRequest(request, List.of());
+        linkCategoryAndBudgets(category, budgets);
         Category saved = categoryRepository.save(category);
         return categoryMapper.toResponse(saved);
     }
@@ -52,13 +53,13 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public CategoryResponse updateCategory(Long id, CategoryRequest request) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Category not found " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found " + id));
         if (request.getName() != null) {
             category.setName(request.getName());
         }
         if (request.getBudgetIds() != null) {
             List<Budget> budgets = getBudgets(request.getBudgetIds());
-            category.setBudgets(budgets);
+            linkCategoryAndBudgets(category, budgets);
         }
         Category saved = categoryRepository.save(category);
         return categoryMapper.toResponse(saved);
@@ -68,7 +69,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public void deleteCategory(Long id) {
         if (!categoryRepository.existsById(id)) {
-            throw new EntityNotFoundException("Category not found " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found " + id);
         }
         categoryRepository.deleteById(id);
     }
@@ -76,9 +77,30 @@ public class CategoryServiceImpl implements CategoryService {
     private List<Budget> getBudgets(List<Long> budgetIds) {
         List<Budget> budgets = budgetRepository.findAllById(budgetIds);
         if (budgets.size() != budgetIds.size()) {
-            throw new EntityNotFoundException("Some budgets not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Some budgets not found");
         }
         return budgets;
+    }
+
+    private List<Budget> getBudgetsIfPresent(List<Long> budgetIds) {
+        if (budgetIds == null || budgetIds.isEmpty()) {
+            return List.of();
+        }
+        return getBudgets(budgetIds);
+    }
+
+    private void linkCategoryAndBudgets(Category category, List<Budget> budgets) {
+        for (Budget currentBudget : category.getBudgets()) {
+            currentBudget.getCategories().remove(category);
+        }
+
+        category.getBudgets().clear();
+        for (Budget budget : budgets) {
+            category.getBudgets().add(budget);
+            if (!budget.getCategories().contains(category)) {
+                budget.getCategories().add(category);
+            }
+        }
     }
 
     private List<CategoryResponse> toResponses(List<Category> categories) {
