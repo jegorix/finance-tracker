@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("api/v1/transactions")
+@RequestMapping("/api/v1/transactions")
 public class TransactionController {
 
     private final TransactionService service;
@@ -49,7 +49,7 @@ public class TransactionController {
 
     @PatchMapping("/{id}")
     public ResponseEntity<TransactionResponse> updateTransaction(@PathVariable Long id,
-            @Valid @RequestBody TransactionRequest request) {
+            @RequestBody TransactionRequest request) {
         return ResponseEntity.ok(service.updateTransaction(id, request));
     }
 

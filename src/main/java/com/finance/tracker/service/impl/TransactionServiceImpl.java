@@ -2,11 +2,13 @@ package com.finance.tracker.service.impl;
 
 import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.Transaction;
+import com.finance.tracker.domain.User;
 import com.finance.tracker.dto.request.TransactionRequest;
 import com.finance.tracker.dto.response.TransactionResponse;
 import com.finance.tracker.mapper.TransactionMapper;
 import com.finance.tracker.repository.BudgetRepository;
 import com.finance.tracker.repository.TransactionRepository;
+import com.finance.tracker.repository.UserRepository;
 import com.finance.tracker.service.TransactionService;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -26,6 +28,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final BudgetRepository budgetRepository;
+    private final UserRepository userRepository;
     private final TransactionMapper transactionMapper;
 
     @Override
@@ -49,6 +52,9 @@ public class TransactionServiceImpl implements TransactionService {
     public TransactionResponse createTransaction(TransactionRequest request) {
         Budget budget = getBudget(request.getBudgetId());
         Transaction transaction = transactionMapper.fromRequest(request, budget);
+        if (request.getUserId() != null) {
+            transaction.setUser(getUser(request.getUserId()));
+        }
         Transaction saved = transactionRepository.save(transaction);
         return transactionMapper.toResponse(saved);
     }
@@ -71,6 +77,9 @@ public class TransactionServiceImpl implements TransactionService {
             Budget budget = getBudget(request.getBudgetId());
             transaction.setBudget(budget);
         }
+        if (request.getUserId() != null) {
+            transaction.setUser(getUser(request.getUserId()));
+        }
         Transaction saved = transactionRepository.save(transaction);
         return transactionMapper.toResponse(saved);
     }
@@ -87,6 +96,11 @@ public class TransactionServiceImpl implements TransactionService {
     private Budget getBudget(Long budgetId) {
         return budgetRepository.findById(budgetId)
                 .orElseThrow(() -> new EntityNotFoundException("Budget not found: " + budgetId));
+    }
+
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
     }
 
     private List<TransactionResponse> toResponses(List<Transaction> transactions) {

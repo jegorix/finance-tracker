@@ -18,4 +18,5 @@ public class TransactionResponse {
     private Double amount;
     private String description;
     private Long budgetId;
+    private Long userId;
 }

@@ -21,6 +21,8 @@ public class TransactionMapper {
         response.setDescription(transaction.getDescription());
         response.setBudgetId(
                 transaction.getBudget() != null ? transaction.getBudget().getId() : null);
+        response.setUserId(
+                transaction.getUser() != null ? transaction.getUser().getId() : null);
 
         return response;
     }
@@ -50,6 +52,8 @@ public class TransactionMapper {
         request.setDescription(transaction.getDescription());
         request.setBudgetId(
                 transaction.getBudget() != null ? transaction.getBudget().getId() : null);
+        request.setUserId(
+                transaction.getUser() != null ? transaction.getUser().getId() : null);
 
         return request;
     }

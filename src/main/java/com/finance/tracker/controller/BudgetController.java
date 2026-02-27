@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,12 +43,13 @@ public class BudgetController {
 
     @PostMapping
     public ResponseEntity<BudgetResponse> createBudget(@Valid @RequestBody BudgetRequest request) {
-        return ResponseEntity.ok(service.createBudget(request));
+        BudgetResponse response = service.createBudget(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PatchMapping("/{id}")
     public ResponseEntity<BudgetResponse> updateBudget(@PathVariable Long id,
-            @Valid @RequestBody BudgetRequest request) {
+            @RequestBody BudgetRequest request) {
         return ResponseEntity.ok(service.updateBudget(id, request));
     }
 

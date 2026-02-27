@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import jakarta.validation.Valid;
 
 import java.util.List;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,12 +38,13 @@ public class AccountController {
 
     @PostMapping
     public ResponseEntity<AccountResponse> createAccount(@Valid @RequestBody AccountRequest request) {
-        return ResponseEntity.ok(service.createAccount(request));
+        AccountResponse response = service.createAccount(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PatchMapping("/{id}")
     public ResponseEntity<AccountResponse> updateAccount(@PathVariable Long id,
-            @Valid @RequestBody AccountRequest request) {
+            @RequestBody AccountRequest request) {
         return ResponseEntity.ok(service.updateAccount(id, request));
     }
 

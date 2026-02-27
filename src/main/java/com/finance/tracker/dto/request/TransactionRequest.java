@@ -32,4 +32,8 @@ public class TransactionRequest {
     @NotNull
     @Positive
     private Long budgetId;
+
+    @NotNull
+    @Positive
+    private Long userId;
 }

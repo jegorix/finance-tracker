@@ -22,7 +22,7 @@ import java.util.List;
 @AllArgsConstructor
 @Getter
 @Setter
-@EqualsAndHashCode
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(exclude = "budgets")
 @Table(name = "categories")
 public class Category {

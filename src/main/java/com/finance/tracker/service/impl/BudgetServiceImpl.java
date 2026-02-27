@@ -36,12 +36,12 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     public List<BudgetResponse> getAllBudgets() {
-        return toResponses(budgetRepository.findAllWithCategories());
+        return toResponses(budgetRepository.findAllWithCategories(), false);
     }
 
     @Override
     public List<BudgetResponse> getAllBudgetsWithTransactions() {
-        return toResponses(budgetRepository.findAllWithTransactions());
+        return toResponses(budgetRepository.findAllWithTransactions(), true);
     }
 
     @Override
@@ -92,7 +92,7 @@ public class BudgetServiceImpl implements BudgetService {
         return categories;
     }
 
-    private List<BudgetResponse> toResponses(List<Budget> budgets) {
-        return budgets.stream().map(budgetMapper::toResponse).toList();
+    private List<BudgetResponse> toResponses(List<Budget> budgets, boolean includeTransactions) {
+        return budgets.stream().map(budget -> budgetMapper.toResponse(budget, includeTransactions)).toList();
     }
 }

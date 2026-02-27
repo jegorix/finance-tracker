@@ -50,7 +50,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserResponse> getAllUsers() {
-        return toResponses(userRepository.findAllWithAccounts());
+        return toResponses(userRepository.findAllWithAccountsAndTransactions());
     }
 
     @Override
@@ -58,6 +58,8 @@ public class UserServiceImpl implements UserService {
     public UserResponse createUser(UserRequest request) {
         List<Account> accounts = getAccounts(request.getAccountIds());
         List<Transaction> transactions = getTransactions(request.getTransactionIds());
+        ensureAssignableAccounts(accounts, null);
+        ensureAssignableTransactions(transactions, null);
         User user = userMapper.fromRequest(request, accounts, transactions);
         User saved = userRepository.save(user);
         return userMapper.toResponse(saved);
@@ -76,11 +78,17 @@ public class UserServiceImpl implements UserService {
         }
         if (request.getAccountIds() != null) {
             List<Account> accounts = getAccounts(request.getAccountIds());
+            ensureAssignableAccounts(accounts, user.getId());
+            user.getAccounts().forEach(a -> a.setUser(null));
             user.setAccounts(accounts);
+            accounts.forEach(a -> a.setUser(user));
         }
         if (request.getTransactionIds() != null) {
             List<Transaction> transactions = getTransactions(request.getTransactionIds());
+            ensureAssignableTransactions(transactions, user.getId());
+            user.getTransactions().forEach(t -> t.setUser(null));
             user.setTransactions(transactions);
+            transactions.forEach(t -> t.setUser(user));
         }
         User saved = userRepository.save(user);
         return userMapper.toResponse(saved);
@@ -113,6 +121,30 @@ public class UserServiceImpl implements UserService {
 
     private List<UserResponse> toResponses(List<User> users) {
         return users.stream().map(userMapper::toResponse).toList();
+    }
+
+    private void ensureAssignableAccounts(List<Account> accounts, Long currentUserId) {
+        for (Account account : accounts) {
+            if (account.getUser() == null) {
+                continue;
+            }
+            if (currentUserId != null && currentUserId.equals(account.getUser().getId())) {
+                continue;
+            }
+            throw new IllegalStateException("Account " + account.getId() + " already belongs to another user");
+        }
+    }
+
+    private void ensureAssignableTransactions(List<Transaction> transactions, Long currentUserId) {
+        for (Transaction transaction : transactions) {
+            if (transaction.getUser() == null) {
+                continue;
+            }
+            if (currentUserId != null && currentUserId.equals(transaction.getUser().getId())) {
+                continue;
+            }
+            throw new IllegalStateException("Transaction " + transaction.getId() + " already belongs to another user");
+        }
     }
 
     private Budget getBudget(Long budgetId) {

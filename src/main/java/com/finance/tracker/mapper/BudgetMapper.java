@@ -13,6 +13,10 @@ import java.util.List;
 public class BudgetMapper {
 
     public BudgetResponse toResponse(Budget budget) {
+        return toResponse(budget, true);
+    }
+
+    public BudgetResponse toResponse(Budget budget, boolean includeTransactions) {
         if (budget == null) {
             return null;
         }
@@ -26,9 +30,13 @@ public class BudgetMapper {
         response.setCategoryIds(
                 budget.getCategories() != null ? budget.getCategories().stream().map(Category::getId).toList() : null);
 
-        response.setTransactionIds(
-                budget.getTransactions() != null ? budget.getTransactions().stream().map(Transaction::getId).toList()
-                        : null);
+        if (includeTransactions) {
+            response.setTransactionIds(
+                    budget.getTransactions() != null ? budget.getTransactions().stream().map(Transaction::getId).toList()
+                            : null);
+        } else {
+            response.setTransactionIds(null);
+        }
 
         return response;
     }

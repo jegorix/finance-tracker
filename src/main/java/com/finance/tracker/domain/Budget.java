@@ -27,7 +27,7 @@ import java.util.List;
 @NoArgsConstructor
 @Getter
 @Setter
-@EqualsAndHashCode
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(exclude = { "categories", "transactions" })
 @Table(name = "budgets")
 public class Budget {

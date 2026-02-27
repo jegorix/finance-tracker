@@ -22,7 +22,7 @@ import lombok.ToString;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString
 @Table(name = "transactions")
 public class Transaction {
@@ -32,7 +32,6 @@ public class Transaction {
     @EqualsAndHashCode.Include
     private Long id;
 
-    @EqualsAndHashCode.Include
     private LocalDate date;
 
     private Double amount;

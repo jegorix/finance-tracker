@@ -21,7 +21,7 @@ import java.util.List;
 @Entity
 @ToString(exclude = { "accounts", "transactions" })
 @AllArgsConstructor
-@EqualsAndHashCode
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @Getter
 @Setter
