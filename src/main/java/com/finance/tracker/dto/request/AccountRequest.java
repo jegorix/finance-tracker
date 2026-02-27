@@ -1,5 +1,7 @@
 package com.finance.tracker.dto.request;
 
+import com.finance.tracker.domain.AccountType;
+
 import java.math.BigDecimal;
 
 import jakarta.validation.constraints.DecimalMin;
@@ -21,9 +23,8 @@ public class AccountRequest {
     @Size(min = 3, max = 50)
     private String name;
 
-    @NotBlank
-    @Size(min = 3, max = 50)
-    private String type;
+    @NotNull
+    private AccountType type;
 
     @NotNull
     @DecimalMin(value = "0.00")

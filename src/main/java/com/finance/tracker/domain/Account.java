@@ -1,6 +1,8 @@
 package com.finance.tracker.domain;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -33,7 +35,8 @@ public class Account {
     private Long id;
 
     private String name;
-    private String type;
+    @Enumerated(EnumType.STRING)
+    private AccountType type;
     private BigDecimal balance;
 
     @ManyToOne(fetch = FetchType.LAZY)
