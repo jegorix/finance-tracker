@@ -14,12 +14,52 @@
 
 ## API Endpoints
 
-Полная документация API находится: [Документация API](api.md)
+Полная документация API находится: [Документация API](docs/api.md)
 
-## Транзакции, Entity Graph и Fetch Join
+## Запуск приложения
 
-**Транзакции:** создание пользователя с несколькими счетами (`POST /api/v1/users/with-accounts`) можно выполнять в одной транзакции (`?transactional=true`) — при ошибке всё откатывается; без транзакции (`?transactional=false`) при сбое в БД остаётся частично сохранённые данные (демонстрация атомарности).
+### 1. Подготовьте `.env`
 
-**Entity Graph:** для избежания N+1 при загрузке связей используются `@EntityGraph` в репозиториях: пользователи со счетами (`findAllWithAccounts`), бюджеты с категориями (`findAllWithCategories`), один бюджет/пользователь по id с нужными связями — один запрос вместо серии по каждому элементу.
+Создайте в корне проекта файл `.env`:
 
-**Fetch Join:** загрузка бюджетов вместе с транзакциями реализована через `LEFT JOIN FETCH` (`findAllWithTransactions`). Вызов: `GET /api/v1/budgets?withTransactions=true` — бюджеты и их транзакции подтягиваются одним запросом, без N+1.
+```env
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=finance_tracker
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+```
+
+### 2. Запустите приложение
+
+```bash
+docker compose --env-file .env up -d --build
+```
+
+### 3. Проверьте, что API поднялось
+
+```bash
+curl http://localhost:8080/api/v1/users
+```
+
+После запуска API доступно по адресу: `http://localhost:8080`.
+
+### 4. Полезные команды
+
+Логи:
+
+```bash
+docker compose logs -f
+```
+
+Остановка:
+
+```bash
+docker compose down
+```
+
+## Транзакции и Entity Graph
+
+**Транзакции:** создание пользователя с несколькими счетами и транзакциями (`POST /api/v1/users/with-accounts-and-transactions`) можно выполнять в одной транзакции (`?transactional=true`) — при ошибке всё откатывается; без транзакции (`?transactional=false`) при сбое в БД остаются частично сохранённые данные.
+
+**Entity Graph:** для избежания N+1 при загрузке связей используются `@EntityGraph` в репозиториях: пользователи со счетами и транзакциями, бюджеты с категориями и транзакциями, а также точечная загрузка одного бюджета/пользователя по id с нужными связями.
