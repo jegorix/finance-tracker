@@ -29,19 +29,14 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     public BudgetResponse getBudgetById(Long id) {
-        Budget budget = budgetRepository.findByIdWithCategoriesAndTransactions(id)
+        Budget budget = budgetRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Budget not found " + id));
         return budgetMapper.toResponse(budget);
     }
 
     @Override
     public List<BudgetResponse> getAllBudgets() {
-        return toResponses(budgetRepository.findAllWithCategories(), false);
-    }
-
-    @Override
-    public List<BudgetResponse> getAllBudgetsWithTransactions() {
-        return toResponses(budgetRepository.findAllWithTransactions(), true);
+        return toResponses(budgetRepository.findAll(), false);
     }
 
     @Override

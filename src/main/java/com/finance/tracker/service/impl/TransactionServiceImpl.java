@@ -32,19 +32,29 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionMapper transactionMapper;
 
     @Override
-    public TransactionResponse getTransactionById(final Long id) {
+    public TransactionResponse getTransactionById(Long id, boolean withBudget, boolean withUser) {
         Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Transaction not found " + id));
-        return transactionMapper.toResponse(transaction);
+        return transactionMapper.toResponse(transaction, withBudget, withUser);
     }
 
     @Override
-    public List<TransactionResponse> getTransactionsByDateRange(final LocalDate startDate, final LocalDate endDate) {
-        List<Transaction> transactions = transactionRepository.findAll();
+    public List<TransactionResponse> getTransactionsByDateRange(
+            LocalDate startDate,
+            LocalDate endDate,
+            boolean withBudget,
+            boolean withUser) {
         if (startDate == null && endDate == null) {
-            return toResponses(transactions);
+            List<Transaction> transactions = getAllTransactions(withBudget, withUser);
+            return toResponses(transactions, withBudget, withUser);
         }
-        return toResponses(transactionRepository.findByDateBetween(startDate, endDate));
+
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("Both startDate and endDate are required for date range filtering");
+        }
+
+        List<Transaction> transactions = transactionRepository.findByDateBetween(startDate, endDate);
+        return toResponses(transactions, withBudget, withUser);
     }
 
     @Override
@@ -63,7 +73,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public TransactionResponse updateTransaction(Long id, TransactionRequest request) {
         Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Transaction not found" + id));
+                .orElseThrow(() -> new EntityNotFoundException("Transaction not found " + id));
         if (request.getDate() != null) {
             transaction.setDate(request.getDate());
         }
@@ -103,7 +113,22 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
     }
 
-    private List<TransactionResponse> toResponses(List<Transaction> transactions) {
-        return transactions.stream().map(transactionMapper::toResponse).toList();
+    private List<Transaction> getAllTransactions(boolean withBudget, boolean withUser) {
+        if (withBudget && !withUser) {
+            return transactionRepository.findAllWithBudget();
+        }
+        if (withUser && !withBudget) {
+            return transactionRepository.findAllWithUser();
+        }
+        return transactionRepository.findAll();
+    }
+
+    private List<TransactionResponse> toResponses(
+            List<Transaction> transactions,
+            boolean withBudget,
+            boolean withUser) {
+        return transactions.stream()
+                .map(transaction -> transactionMapper.toResponse(transaction, withBudget, withUser))
+                .toList();
     }
 }

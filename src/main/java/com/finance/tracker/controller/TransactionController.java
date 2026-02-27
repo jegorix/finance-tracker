@@ -30,15 +30,20 @@ public class TransactionController {
     private final TransactionService service;
 
     @GetMapping("/{id}")
-    public ResponseEntity<TransactionResponse> getById(@PathVariable final Long id) {
-        return ResponseEntity.ok(service.getTransactionById(id));
+    public ResponseEntity<TransactionResponse> getById(
+            @PathVariable final Long id,
+            @RequestParam(required = false, defaultValue = "false") final boolean withBudget,
+            @RequestParam(required = false, defaultValue = "false") final boolean withUser) {
+        return ResponseEntity.ok(service.getTransactionById(id, withBudget, withUser));
     }
 
     @GetMapping
     public ResponseEntity<List<TransactionResponse>> getByDateRange(
             @RequestParam(required = false) final LocalDate startDate,
-            @RequestParam(required = false) final LocalDate endDate) {
-        return ResponseEntity.ok(service.getTransactionsByDateRange(startDate, endDate));
+            @RequestParam(required = false) final LocalDate endDate,
+            @RequestParam(required = false, defaultValue = "false") final boolean withBudget,
+            @RequestParam(required = false, defaultValue = "false") final boolean withUser) {
+        return ResponseEntity.ok(service.getTransactionsByDateRange(startDate, endDate, withBudget, withUser));
     }
 
     @PostMapping

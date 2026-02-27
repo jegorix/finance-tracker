@@ -43,14 +43,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse getUserById(Long id) {
-        User user = userRepository.findByIdWithAccountsAndTransactions(id)
+        User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User not found " + id));
         return userMapper.toResponse(user);
     }
 
     @Override
     public List<UserResponse> getAllUsers() {
-        return toResponses(userRepository.findAllWithAccountsAndTransactions());
+        return toResponses(userRepository.findAll());
     }
 
     @Override
@@ -169,16 +169,16 @@ public class UserServiceImpl implements UserService {
 
         int savedTransactions = 0;
         for (TransactionRequest transactionRequest : request.getTransactions()) {
-            if (request.isFailAfterTransaction() && savedTransactions == 1) {
-                throw new IllegalStateException("Forced error while saving second transaction");
-            }
-
             Budget budget = getBudget(transactionRequest.getBudgetId());
             Transaction transaction = transactionMapper.fromRequest(transactionRequest, budget);
             transaction.setUser(savedUser);
             savedUser.getTransactions().add(transaction);
             transactionRepository.save(transaction);
             savedTransactions++;
+
+            if (request.isFailAfterTransaction() && savedTransactions == 1) {
+                throw new IllegalStateException("Forced error right after first transaction was saved");
+            }
         }
 
         return userMapper.toResponse(savedUser);

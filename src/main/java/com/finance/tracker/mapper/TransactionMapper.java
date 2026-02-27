@@ -10,6 +10,10 @@ import org.springframework.stereotype.Component;
 public class TransactionMapper {
 
     public TransactionResponse toResponse(Transaction transaction) {
+        return toResponse(transaction, true, true);
+    }
+
+    public TransactionResponse toResponse(Transaction transaction, boolean includeBudget, boolean includeUser) {
         if (transaction == null) {
             return null;
         }
@@ -19,10 +23,18 @@ public class TransactionMapper {
         response.setDate(transaction.getDate());
         response.setAmount(transaction.getAmount());
         response.setDescription(transaction.getDescription());
-        response.setBudgetId(
-                transaction.getBudget() != null ? transaction.getBudget().getId() : null);
-        response.setUserId(
-                transaction.getUser() != null ? transaction.getUser().getId() : null);
+        if (includeBudget) {
+            response.setBudgetId(
+                    transaction.getBudget() != null ? transaction.getBudget().getId() : null);
+            response.setBudgetName(
+                    transaction.getBudget() != null ? transaction.getBudget().getName() : null);
+        }
+        if (includeUser) {
+            response.setUserId(
+                    transaction.getUser() != null ? transaction.getUser().getId() : null);
+            response.setUsername(
+                    transaction.getUser() != null ? transaction.getUser().getUsername() : null);
+        }
 
         return response;
     }

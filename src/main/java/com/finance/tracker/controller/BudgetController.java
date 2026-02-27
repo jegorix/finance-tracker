@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -33,12 +32,8 @@ public class BudgetController {
     }
 
     @GetMapping
-    public ResponseEntity<List<BudgetResponse>> getAllBudgets(
-            @RequestParam(required = false, defaultValue = "false") boolean withTransactions) {
-        List<BudgetResponse> budgets = withTransactions
-                ? service.getAllBudgetsWithTransactions()
-                : service.getAllBudgets();
-        return ResponseEntity.ok(budgets);
+    public ResponseEntity<List<BudgetResponse>> getAllBudgets() {
+        return ResponseEntity.ok(service.getAllBudgets());
     }
 
     @PostMapping

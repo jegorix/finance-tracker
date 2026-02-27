@@ -18,6 +18,9 @@ docker compose --env-file .env up -d --build
 - **PATCH** `/api/v1/users/{id}` — обновить пользователя
 - **DELETE** `/api/v1/users/{id}` — удалить пользователя
 - **POST** `/api/v1/users/with-accounts-and-transactions?transactional=true|false` — создать пользователя вместе с новыми счетами и транзакциями.
+  - Дополнительно в body доступен флаг `failAfterTransaction`:
+    - `false` (по умолчанию) — обычное создание
+    - `true` — искусственная ошибка сразу после сохранения первой транзакции (для проверки атомарности)
 
 ---
 
@@ -28,12 +31,15 @@ docker compose --env-file .env up -d --build
 - **POST** `/api/v1/accounts` — создать счёт
 - **PATCH** `/api/v1/accounts/{id}` — обновить счёт
 - **DELETE** `/api/v1/accounts/{id}` — удалить счёт
+- Поле `type` для счёта — enum `AccountType`: `CHECKING`, `SAVINGS`, `CREDIT`, `DEBIT`, `INVESTMENT`, `CASH`
 
 ---
 
 ### Transactions — `/api/v1/transactions`
 
 - **GET** `/api/v1/transactions` — список транзакций (опционально по датам: `startDate`, `endDate`)
+- **GET** `/api/v1/transactions?withBudget=true` — список транзакций с подгрузкой `budget` через `EntityGraph`
+- **GET** `/api/v1/transactions?withUser=true` — список транзакций с подгрузкой `user` через `EntityGraph`
 - **GET** `/api/v1/transactions/{id}` — транзакция по id
 - **POST** `/api/v1/transactions` — создать транзакцию (привязка к бюджету, опционально к пользователю через `userId`)
 - **PATCH** `/api/v1/transactions/{id}` — обновить транзакцию
@@ -53,7 +59,7 @@ docker compose --env-file .env up -d --build
 
 ### Budgets — `/api/v1/budgets`
 
-- **GET** `/api/v1/budgets` — список бюджетов; `?withTransactions=true` — подгрузить транзакции
+- **GET** `/api/v1/budgets` — список бюджетов (базовый режим)
 - **GET** `/api/v1/budgets/{id}` — бюджет по id
 - **POST** `/api/v1/budgets` — создать бюджет
 - **PATCH** `/api/v1/budgets/{id}` — обновить бюджет

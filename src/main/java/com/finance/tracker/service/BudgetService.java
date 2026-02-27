@@ -10,8 +10,6 @@ public interface BudgetService {
 
     List<BudgetResponse> getAllBudgets();
 
-    List<BudgetResponse> getAllBudgetsWithTransactions();
-
     BudgetResponse createBudget(BudgetRequest request);
 
     BudgetResponse updateBudget(Long id, BudgetRequest request);
