@@ -1,0 +1,21 @@
+databaseChangeLog:
+- changeSet:
+    id: 003-create-categories
+    author: ekuzm
+    changes:
+    - createTable:
+        tableName: categories
+        columns:
+        - column:
+            name: id
+            type: BIGINT
+            autoIncrement: true
+            constraints:
+              primaryKey: true
+              primaryKeyName: pk_categories
+              nullable: false
+        - column:
+            name: name
+            type: VARCHAR(50)
+            constraints:
+              nullable: false

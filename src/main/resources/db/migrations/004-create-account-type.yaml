@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+        id: 007-create-account-type
+        author: ekuzm
+        changes:
+          - sql:
+                dbms: postgresql
+                splitStatements: false
+                sql: |
+                    DO $$
+                    BEGIN
+                        CREATE TYPE account_type AS ENUM (
+                            'CHECKING',
+                            'SAVINGS',
+                            'CREDIT',
+                            'DEBIT',
+                            'INVESTMENT',
+                            'CASH'
+                        );
+                    EXCEPTION
+                        WHEN duplicate_object THEN null;
+                    END$$;

@@ -34,14 +34,17 @@ public class Budget {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", updatable = false, nullable = false)
     @EqualsAndHashCode.Include
     private Long id;
 
+    @Column(name = "name", nullable = false, length = 50)
     private String name;
 
-    @Column(name = "limit_amount")
+    @Column(name = "limit_amount", nullable = false)
     private Double limitAmount;
 
+    @Column(name = "spent", nullable = false)
     private Double spent;
 
     @ManyToMany(fetch = FetchType.LAZY)

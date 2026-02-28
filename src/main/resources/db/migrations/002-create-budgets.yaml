@@ -1,0 +1,31 @@
+databaseChangeLog:
+- changeSet:
+    id: 002-create-budgets
+    author: ekuzm
+    changes:
+    - createTable:
+        tableName: budgets
+        columns:
+        - column:
+            name: id
+            type: BIGINT
+            autoIncrement: true
+            constraints:
+              primaryKey: true
+              primaryKeyName: pk_budgets
+              nullable: false
+        - column:
+            name: name
+            type: VARCHAR(50)
+            constraints:
+              nullable: false
+        - column:
+            name: limit_amount
+            type: DOUBLE PRECISION
+            constraints:
+              nullable: false
+        - column:
+            name: spent
+            type: DOUBLE PRECISION
+            constraints:
+              nullable: false

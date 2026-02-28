@@ -2,6 +2,7 @@ package com.finance.tracker.domain;
 
 import java.time.LocalDate;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -29,16 +30,21 @@ public class Transaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", updatable = false, nullable = false)
     @EqualsAndHashCode.Include
     private Long id;
 
+    @Column(name = "date")
     private LocalDate date;
 
+    @Column(name = "amount", nullable = false)
     private Double amount;
+
+    @Column(name = "description", nullable = false, length = 255)
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "budget_id")
+    @JoinColumn(name = "budget_id", nullable = false)
     @ToString.Exclude
     private Budget budget;
 

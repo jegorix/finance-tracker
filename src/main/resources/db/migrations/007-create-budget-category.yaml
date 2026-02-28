@@ -1,0 +1,34 @@
+databaseChangeLog:
+  - changeSet:
+        id: 006-create-budget-category
+        author: ekuzm
+        changes:
+          - createTable:
+                tableName: budget_category
+                columns:
+                  - column:
+                        name: budget_id
+                        type: BIGINT
+                        constraints:
+                            nullable: false
+                  - column:
+                        name: category_id
+                        type: BIGINT
+                        constraints:
+                            nullable: false
+          - addPrimaryKey:
+                tableName: budget_category
+                columnNames: budget_id, category_id
+                constraintName: pk_budget_category
+          - addForeignKeyConstraint:
+                baseTableName: budget_category
+                baseColumnNames: budget_id
+                referencedTableName: budgets
+                referencedColumnNames: id
+                constraintName: fk_budget_category_budget
+          - addForeignKeyConstraint:
+                baseTableName: budget_category
+                baseColumnNames: category_id
+                referencedTableName: categories
+                referencedColumnNames: id
+                constraintName: fk_budget_category_category
