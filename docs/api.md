@@ -5,7 +5,7 @@ REST API Finance Tracker. Базовый URL: `http://localhost:8080`. Отве�
 Запуск:
 
 ```bash
-docker compose --env-file .env up -d --build
+docker compose up -d --build
 ```
 
 ---
