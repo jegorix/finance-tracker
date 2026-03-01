@@ -26,9 +26,13 @@ databaseChangeLog:
                 referencedTableName: budgets
                 referencedColumnNames: id
                 constraintName: fk_budget_category_budget
+                onDelete: CASCADE
+                onUpdate: CASCADE
           - addForeignKeyConstraint:
                 baseTableName: budget_category
                 baseColumnNames: category_id
                 referencedTableName: categories
                 referencedColumnNames: id
                 constraintName: fk_budget_category_category
+                onDelete: CASCADE
+                onUpdate: CASCADE
