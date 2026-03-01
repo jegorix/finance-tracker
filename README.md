@@ -33,7 +33,7 @@ POSTGRES_PASSWORD=postgres
 ### 2. Запустите приложение
 
 ```bash
-docker compose --env-file .env up -d --build
+docker compose up -d --build
 ```
 
 ### 3. Проверьте, что API поднялось
@@ -66,3 +66,7 @@ docker compose down
 
 **Entity Graph:** для демонстрации N+1 в транзакциях используется `@EntityGraph` для списка транзакций:
 `GET /api/v1/transactions?withBudget=true` и `GET /api/v1/transactions?withUser=true`.
+
+## SonarQube Cloud
+
+Ссылка на [Sonar Analysis](https://sonarcloud.io/summary/new_code?id=ekuzm_FinanceTracker)
