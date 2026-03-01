@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-        id: 007-create-account-type
+        id: 004-create-account-type
         author: ekuzm
         changes:
           - sql:
