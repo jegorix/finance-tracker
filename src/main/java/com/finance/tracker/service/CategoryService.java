@@ -6,13 +6,13 @@ import com.finance.tracker.dto.response.CategoryResponse;
 import java.util.List;
 
 public interface CategoryService {
-    CategoryResponse getCategoryById(Long id);
+    CategoryResponse findById(Long id);
 
-    List<CategoryResponse> getAllCategories();
+    List<CategoryResponse> findAll();
 
-    CategoryResponse createCategory(CategoryRequest request);
+    CategoryResponse create(CategoryRequest request);
 
-    CategoryResponse updateCategory(Long id, CategoryRequest request);
+    CategoryResponse update(Long id, CategoryRequest request);
 
-    void deleteCategory(Long id);
+    void delete(Long id);
 }

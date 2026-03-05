@@ -1,10 +1,12 @@
 package com.finance.tracker.service.impl;
 
 import com.finance.tracker.domain.Account;
+import com.finance.tracker.domain.User;
 import com.finance.tracker.dto.request.AccountRequest;
 import com.finance.tracker.dto.response.AccountResponse;
 import com.finance.tracker.mapper.AccountMapper;
 import com.finance.tracker.repository.AccountRepository;
+import com.finance.tracker.repository.UserRepository;
 import com.finance.tracker.service.AccountService;
 
 import java.util.List;
@@ -22,53 +24,61 @@ import org.springframework.web.server.ResponseStatusException;
 public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
+    private final UserRepository userRepository;
     private final AccountMapper accountMapper;
 
     @Override
-    public AccountResponse getAccountById(Long id) {
+    public AccountResponse findById(Long id) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found " + id));
         return accountMapper.toResponse(account);
     }
 
     @Override
-    public List<AccountResponse> getAllAccounts() {
+    public List<AccountResponse> findAll() {
         return toResponses(accountRepository.findAll());
     }
 
     @Override
     @Transactional
-    public AccountResponse createAccount(AccountRequest request) {
+    public AccountResponse create(AccountRequest request) {
+        User user = getUser(request.getUserId());
         Account account = accountMapper.fromRequest(request);
+        account.setName(request.getName().trim());
+        account.setUser(user);
+
         Account saved = accountRepository.save(account);
         return accountMapper.toResponse(saved);
     }
 
     @Override
     @Transactional
-    public AccountResponse updateAccount(Long id, AccountRequest request) {
+    public AccountResponse update(Long id, AccountRequest request) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found " + id));
-        if (request.getName() != null) {
-            account.setName(request.getName());
-        }
-        if (request.getType() != null) {
-            account.setType(request.getType());
-        }
-        if (request.getBalance() != null) {
-            account.setBalance(request.getBalance());
-        }
+        User user = getUser(request.getUserId());
+
+        account.setName(request.getName().trim());
+        account.setType(request.getType());
+        account.setBalance(request.getBalance());
+        account.setUser(user);
+
         Account saved = accountRepository.save(account);
         return accountMapper.toResponse(saved);
     }
 
     @Override
     @Transactional
-    public void deleteAccount(Long id) {
+    public void delete(Long id) {
         if (!accountRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found " + id);
         }
         accountRepository.deleteById(id);
+    }
+
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found " + userId));
     }
 
     private List<AccountResponse> toResponses(List<Account> accounts) {

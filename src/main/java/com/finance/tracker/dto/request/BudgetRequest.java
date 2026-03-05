@@ -1,10 +1,13 @@
 package com.finance.tracker.dto.request;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -18,16 +21,22 @@ import lombok.Setter;
 public class BudgetRequest {
 
     @NotBlank
-    @Size(min = 3, max = 50)
+    @Size(max = 50)
     private String name;
 
     @NotNull
-    @Min(value = 1)
-    private Double limitAmount;
+    @DecimalMin(value = "0.00")
+    private BigDecimal limitAmount;
 
     @NotNull
-    @Min(value = 0)
-    private Double spent;
+    private LocalDate periodStart;
 
-    private List<Long> categoryIds;
+    @NotNull
+    private LocalDate periodEnd;
+
+    @NotNull
+    @Positive
+    private Long userId;
+
+    private List<@Positive Long> categoryIds;
 }

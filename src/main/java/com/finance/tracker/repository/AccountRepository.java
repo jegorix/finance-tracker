@@ -6,4 +6,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface AccountRepository extends JpaRepository<Account, Long> {
+
+    boolean existsByNameIgnoreCaseAndUserId(String name, Long userId);
+
+    boolean existsByNameIgnoreCaseAndUserIdAndIdNot(String name, Long userId, Long id);
 }

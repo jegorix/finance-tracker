@@ -1,9 +1,15 @@
 package com.finance.tracker.domain;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -34,14 +40,19 @@ public class Transaction {
     @EqualsAndHashCode.Include
     private Long id;
 
-    @Column(name = "date")
-    private LocalDate date;
+    @Column(name = "occurred_at", nullable = false)
+    private LocalDateTime occurredAt;
 
-    @Column(name = "amount", nullable = false)
-    private Double amount;
+    @Column(name = "amount", nullable = false, precision = 19, scale = 2)
+    private BigDecimal amount;
 
     @Column(name = "description", nullable = false, length = 255)
     private String description;
+
+    @Column(name = "type", nullable = false, columnDefinition = "transaction_type")
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    private TransactionType type;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "budget_id", nullable = false)
@@ -49,7 +60,12 @@ public class Transaction {
     private Budget budget;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "account_id", nullable = false)
+    @ToString.Exclude
+    private Account account;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
     @ToString.Exclude
     private User user;
 }

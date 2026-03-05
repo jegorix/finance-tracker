@@ -1,14 +1,12 @@
 package com.finance.tracker.mapper;
 
 import com.finance.tracker.domain.Account;
+import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.Transaction;
 import com.finance.tracker.domain.User;
 import com.finance.tracker.dto.request.UserRequest;
 import com.finance.tracker.dto.response.UserResponse;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class UserMapper {
@@ -30,13 +28,13 @@ public class UserMapper {
                 user.getTransactions() != null ? user.getTransactions().stream().map(Transaction::getId).toList()
                         : null);
 
+        response.setBudgetIds(
+                user.getBudgets() != null ? user.getBudgets().stream().map(Budget::getId).toList() : null);
+
         return response;
     }
 
-    public User fromRequest(UserRequest request,
-            List<Account> accounts,
-            List<Transaction> transactions) {
-
+    public User fromRequest(UserRequest request) {
         if (request == null) {
             return null;
         }
@@ -44,14 +42,6 @@ public class UserMapper {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-        if (accounts != null) {
-            user.setAccounts(accounts);
-            accounts.forEach(a -> a.setUser(user));
-        }
-        if (transactions != null) {
-            user.setTransactions(transactions);
-            transactions.forEach(t -> t.setUser(user));
-        }
         return user;
     }
 
@@ -63,14 +53,6 @@ public class UserMapper {
         UserRequest request = new UserRequest();
         request.setUsername(user.getUsername());
         request.setEmail(user.getEmail());
-
-        request.setAccountIds(user.getAccounts() != null
-                ? user.getAccounts().stream().map(Account::getId).collect(Collectors.toList())
-                : null);
-
-        request.setTransactionIds(user.getTransactions() != null
-                ? user.getTransactions().stream().map(Transaction::getId).collect(Collectors.toList())
-                : null);
 
         return request;
     }

@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -20,7 +21,7 @@ import lombok.Setter;
 public class AccountRequest {
 
     @NotBlank
-    @Size(min = 3, max = 50)
+    @Size(max = 50)
     private String name;
 
     @NotNull
@@ -29,4 +30,8 @@ public class AccountRequest {
     @NotNull
     @DecimalMin(value = "0.00")
     private BigDecimal balance;
+
+    @NotNull
+    @Positive
+    private Long userId;
 }

@@ -1,6 +1,6 @@
 package com.finance.tracker.repository;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -13,12 +13,14 @@ import com.finance.tracker.domain.Transaction;
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
-    List<Transaction> findByDateBetween(LocalDate startDate, LocalDate endDate);
+    List<Transaction> findByOccurredAtBetween(LocalDateTime startDateTime, LocalDateTime endDateTime);
+    boolean existsByAccountId(Long accountId);
+    boolean existsByBudgetId(Long budgetId);
 
     @Query("SELECT t FROM Transaction t")
     List<Transaction> findAllTransactions();
 
-    @EntityGraph(attributePaths = { "budget", "user" })
+    @EntityGraph(attributePaths = { "budget", "account", "user" })
     @Query("SELECT t FROM Transaction t")
     List<Transaction> findAllTransactionsWithEntityGraph();
 }

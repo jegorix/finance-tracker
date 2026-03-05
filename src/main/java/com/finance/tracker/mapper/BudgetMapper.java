@@ -3,10 +3,14 @@ package com.finance.tracker.mapper;
 import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.Category;
 import com.finance.tracker.domain.Transaction;
+import com.finance.tracker.domain.TransactionType;
+import com.finance.tracker.domain.User;
 import com.finance.tracker.dto.request.BudgetRequest;
 import com.finance.tracker.dto.response.BudgetResponse;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,7 +30,10 @@ public class BudgetMapper {
         response.setId(budget.getId());
         response.setName(budget.getName());
         response.setLimitAmount(budget.getLimitAmount());
-        response.setSpent(budget.getSpent());
+        response.setPeriodStart(budget.getPeriodStart());
+        response.setPeriodEnd(budget.getPeriodEnd());
+        response.setSpent(calculateSpent(budget));
+        response.setUserId(budget.getUser() != null ? budget.getUser().getId() : null);
 
         response.setCategoryIds(
                 budget.getCategories() != null ? budget.getCategories().stream().map(Category::getId).toList() : null);
@@ -43,7 +50,7 @@ public class BudgetMapper {
         return response;
     }
 
-    public Budget fromRequest(BudgetRequest request, List<Category> categories) {
+    public Budget fromRequest(BudgetRequest request, User user, List<Category> categories) {
         if (request == null) {
             return null;
         }
@@ -51,7 +58,9 @@ public class BudgetMapper {
         Budget budget = new Budget();
         budget.setName(request.getName());
         budget.setLimitAmount(request.getLimitAmount());
-        budget.setSpent(request.getSpent());
+        budget.setPeriodStart(request.getPeriodStart());
+        budget.setPeriodEnd(request.getPeriodEnd());
+        budget.setUser(user);
         budget.setCategories(categories != null ? new ArrayList<>(categories) : new ArrayList<>());
 
         return budget;
@@ -65,11 +74,36 @@ public class BudgetMapper {
         BudgetRequest request = new BudgetRequest();
         request.setName(budget.getName());
         request.setLimitAmount(budget.getLimitAmount());
-        request.setSpent(budget.getSpent());
+        request.setPeriodStart(budget.getPeriodStart());
+        request.setPeriodEnd(budget.getPeriodEnd());
+        request.setUserId(budget.getUser() != null ? budget.getUser().getId() : null);
 
         request.setCategoryIds(
                 budget.getCategories() != null ? budget.getCategories().stream().map(Category::getId).toList() : null);
 
         return request;
+    }
+
+    private BigDecimal calculateSpent(Budget budget) {
+        if (budget.getTransactions() == null || budget.getTransactions().isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+
+        return budget.getTransactions().stream()
+                .filter(transaction -> transaction.getType() == null
+                        || transaction.getType() == TransactionType.EXPENSE)
+                .filter(transaction -> isWithinBudgetPeriod(transaction.getOccurredAt() != null
+                        ? transaction.getOccurredAt().toLocalDate()
+                        : null, budget))
+                .map(Transaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private boolean isWithinBudgetPeriod(LocalDate date, Budget budget) {
+        if (date == null || budget.getPeriodStart() == null || budget.getPeriodEnd() == null) {
+            return false;
+        }
+
+        return !date.isBefore(budget.getPeriodStart()) && !date.isAfter(budget.getPeriodEnd());
     }
 }

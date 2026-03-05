@@ -16,13 +16,15 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserWithAccountsAndTransactionsCreateRequest {
+public class UserWithAccountsAndBudgetsCreateRequest {
 
     @NotBlank
-    @Size(min = 3, max = 50)
+    @Size(max = 50)
     private String username;
 
+    @NotBlank
     @Email
+    @Size(max = 255)
     private String email;
 
     @NotEmpty
@@ -31,7 +33,7 @@ public class UserWithAccountsAndTransactionsCreateRequest {
 
     @NotEmpty
     @Valid
-    private List<TransactionRequest> transactions;
+    private List<BudgetRequest> budgets;
 
     private boolean failAfterAccounts;
 }

@@ -6,13 +6,13 @@ import com.finance.tracker.dto.response.AccountResponse;
 import java.util.List;
 
 public interface AccountService {
-    AccountResponse getAccountById(Long id);
+    AccountResponse findById(Long id);
 
-    List<AccountResponse> getAllAccounts();
+    List<AccountResponse> findAll();
 
-    AccountResponse createAccount(AccountRequest request);
+    AccountResponse create(AccountRequest request);
 
-    AccountResponse updateAccount(Long id, AccountRequest request);
+    AccountResponse update(Long id, AccountRequest request);
 
-    void deleteAccount(Long id);
+    void delete(Long id);
 }

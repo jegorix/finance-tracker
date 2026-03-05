@@ -1,5 +1,7 @@
 package com.finance.tracker.dto.response;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -15,8 +17,11 @@ public class BudgetResponse {
 
     private Long id;
     private String name;
-    private Double limitAmount;
-    private Double spent;
+    private BigDecimal limitAmount;
+    private LocalDate periodStart;
+    private LocalDate periodEnd;
+    private BigDecimal spent;
+    private Long userId;
     private List<Long> categoryIds;
     private List<Long> transactionIds;
 }

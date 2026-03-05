@@ -2,6 +2,7 @@ package com.finance.tracker.mapper;
 
 import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.Category;
+import com.finance.tracker.domain.User;
 import com.finance.tracker.dto.request.CategoryRequest;
 import com.finance.tracker.dto.response.CategoryResponse;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,7 @@ public class CategoryMapper {
         CategoryResponse response = new CategoryResponse();
         response.setId(category.getId());
         response.setName(category.getName());
+        response.setUserId(category.getUser() != null ? category.getUser().getId() : null);
 
         response.setBudgetIds(
                 category.getBudgets() != null ? category.getBudgets().stream().map(Budget::getId).toList() : null);
@@ -27,13 +29,14 @@ public class CategoryMapper {
         return response;
     }
 
-    public Category fromRequest(CategoryRequest request, List<Budget> budgets) {
+    public Category fromRequest(CategoryRequest request, User user, List<Budget> budgets) {
         if (request == null) {
             return null;
         }
 
         Category category = new Category();
         category.setName(request.getName());
+        category.setUser(user);
         category.setBudgets(budgets != null ? new ArrayList<>(budgets) : new ArrayList<>());
 
         return category;
@@ -46,6 +49,7 @@ public class CategoryMapper {
 
         CategoryRequest request = new CategoryRequest();
         request.setName(category.getName());
+        request.setUserId(category.getUser() != null ? category.getUser().getId() : null);
 
         request.setBudgetIds(
                 category.getBudgets() != null ? category.getBudgets().stream().map(Budget::getId).toList() : null);

@@ -3,20 +3,20 @@ package com.finance.tracker.service;
 import com.finance.tracker.dto.request.TransactionRequest;
 import com.finance.tracker.dto.response.TransactionResponse;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface TransactionService {
 
-    TransactionResponse getTransactionById(Long id);
+    TransactionResponse findById(Long id);
 
-    List<TransactionResponse> getAllTransactions(boolean withEntityGraph);
+    List<TransactionResponse> findAll(boolean withEntityGraph);
 
-    List<TransactionResponse> getTransactionsByDateRange(LocalDate startDate, LocalDate endDate);
+    List<TransactionResponse> findByDateRange(LocalDateTime startDateTime, LocalDateTime endDateTime);
 
-    TransactionResponse createTransaction(TransactionRequest request);
+    TransactionResponse create(TransactionRequest request);
 
-    TransactionResponse updateTransaction(Long id, TransactionRequest request);
+    TransactionResponse update(Long id, TransactionRequest request);
 
-    void deleteTransaction(Long id);
+    void delete(Long id);
 }

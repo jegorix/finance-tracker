@@ -18,4 +18,5 @@ public class UserResponse {
     private String email;
     private List<Long> accountIds;
     private List<Long> transactionIds;
+    private List<Long> budgetIds;
 }

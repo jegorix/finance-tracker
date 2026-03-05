@@ -1,23 +1,23 @@
 package com.finance.tracker.service;
 
 import com.finance.tracker.dto.request.UserRequest;
-import com.finance.tracker.dto.request.UserWithAccountsAndTransactionsCreateRequest;
+import com.finance.tracker.dto.request.UserWithAccountsAndBudgetsCreateRequest;
 import com.finance.tracker.dto.response.UserResponse;
 
 import java.util.List;
 
 public interface UserService {
-    UserResponse getUserById(Long id);
+    UserResponse findById(Long id);
 
-    List<UserResponse> getAllUsers();
+    List<UserResponse> findAll();
 
-    UserResponse createUser(UserRequest request);
+    UserResponse create(UserRequest request);
 
-    UserResponse updateUser(Long id, UserRequest user);
+    UserResponse update(Long id, UserRequest user);
 
-    void deleteUser(Long id);
+    void delete(Long id);
 
-    UserResponse createUserWithAccountsAndTransactionsTx(UserWithAccountsAndTransactionsCreateRequest request);
+    UserResponse createWithAccountsAndBudgetsTx(UserWithAccountsAndBudgetsCreateRequest request);
 
-    UserResponse createUserWithAccountsAndTransactionsNoTx(UserWithAccountsAndTransactionsCreateRequest request);
+    UserResponse createWithAccountsAndBudgetsNoTx(UserWithAccountsAndBudgetsCreateRequest request);
 }

@@ -7,6 +7,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Column;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -24,7 +26,7 @@ import java.util.List;
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@ToString(exclude = "budgets")
+@ToString
 @Table(name = "categories")
 public class Category {
 
@@ -37,7 +39,13 @@ public class Category {
     @Column(name = "name", nullable = false, length = 50)
     private String name;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    @ToString.Exclude
+    private User user;
+
     @ManyToMany(mappedBy = "categories", fetch = FetchType.LAZY)
+    @ToString.Exclude
     private List<Budget> budgets = new ArrayList<>();
 
 }

@@ -10,6 +10,8 @@ databaseChangeLog:
   - include:
         file: db/migrations/005-create-accounts.yaml
   - include:
-        file: db/migrations/006-create-transactions.yaml
+        file: db/migrations/006-create-transaction-type.yaml
   - include:
-        file: db/migrations/007-create-budget-category.yaml
+        file: db/migrations/007-create-transactions.yaml
+  - include:
+        file: db/migrations/008-create-budget-category.yaml

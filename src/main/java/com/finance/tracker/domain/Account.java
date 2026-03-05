@@ -17,10 +17,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.math.BigDecimal;
+import jakarta.persistence.OneToMany;
 
 @Entity
 @AllArgsConstructor
@@ -42,15 +47,19 @@ public class Account {
     private String name;
 
     @Column(name = "type", nullable = false, columnDefinition = "account_type")
-    @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Enumerated(EnumType.STRING)
     private AccountType type;
 
     @Column(name = "balance", nullable = false, precision = 19, scale = 2)
     private BigDecimal balance;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", nullable = false)
     @ToString.Exclude
     private User user;
+
+    @OneToMany(mappedBy = "account", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    private List<Transaction> transactions = new ArrayList<>();
 }

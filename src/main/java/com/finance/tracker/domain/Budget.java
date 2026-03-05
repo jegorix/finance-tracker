@@ -1,6 +1,5 @@
 package com.finance.tracker.domain;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -19,8 +18,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import jakarta.persistence.ManyToOne;
 
 @Entity
 @AllArgsConstructor
@@ -28,7 +30,7 @@ import java.util.List;
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@ToString(exclude = { "categories", "transactions" })
+@ToString
 @Table(name = "budgets")
 public class Budget {
 
@@ -41,20 +43,30 @@ public class Budget {
     @Column(name = "name", nullable = false, length = 50)
     private String name;
 
-    @Column(name = "limit_amount", nullable = false)
-    private Double limitAmount;
+    @Column(name = "limit_amount", nullable = false, precision = 19, scale = 2)
+    private BigDecimal limitAmount;
 
-    @Column(name = "spent", nullable = false)
-    private Double spent;
+    @Column(name = "period_start", nullable = false)
+    private LocalDate periodStart;
+
+    @Column(name = "period_end", nullable = false)
+    private LocalDate periodEnd;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    @ToString.Exclude
+    private User user;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "budget_category", 
         joinColumns = @JoinColumn(name = "budget_id"), 
         inverseJoinColumns = @JoinColumn(name = "category_id"))
+    @ToString.Exclude
     private List<Category> categories = new ArrayList<>();
 
-    @OneToMany(mappedBy = "budget", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "budget", fetch = FetchType.LAZY)
+    @ToString.Exclude
     private List<Transaction> transactions = new ArrayList<>();
 
 }

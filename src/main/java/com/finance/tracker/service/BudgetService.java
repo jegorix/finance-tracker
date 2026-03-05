@@ -6,13 +6,13 @@ import com.finance.tracker.dto.response.BudgetResponse;
 import java.util.List;
 
 public interface BudgetService {
-    BudgetResponse getBudgetById(Long id);
+    BudgetResponse findById(Long id);
 
-    List<BudgetResponse> getAllBudgets();
+    List<BudgetResponse> findAll();
 
-    BudgetResponse createBudget(BudgetRequest request);
+    BudgetResponse create(BudgetRequest request);
 
-    BudgetResponse updateBudget(Long id, BudgetRequest request);
+    BudgetResponse update(Long id, BudgetRequest request);
 
-    void deleteBudget(Long id);
+    void delete(Long id);
 }

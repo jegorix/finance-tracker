@@ -15,5 +15,6 @@ public class CategoryResponse {
 
     private Long id;
     private String name;
+    private Long userId;
     private List<Long> budgetIds;
 }

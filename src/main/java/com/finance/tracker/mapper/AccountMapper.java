@@ -1,8 +1,8 @@
 package com.finance.tracker.mapper;
 
+import com.finance.tracker.domain.Account;
 import com.finance.tracker.dto.request.AccountRequest;
 import com.finance.tracker.dto.response.AccountResponse;
-import com.finance.tracker.domain.Account;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -44,6 +44,7 @@ public class AccountMapper {
         request.setName(account.getName());
         request.setType(account.getType());
         request.setBalance(account.getBalance());
+        request.setUserId(account.getUser() != null ? account.getUser().getId() : null);
 
         return request;
     }

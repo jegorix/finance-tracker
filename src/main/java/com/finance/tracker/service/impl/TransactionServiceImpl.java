@@ -1,17 +1,19 @@
 package com.finance.tracker.service.impl;
 
+import com.finance.tracker.domain.Account;
 import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.Transaction;
 import com.finance.tracker.domain.User;
 import com.finance.tracker.dto.request.TransactionRequest;
 import com.finance.tracker.dto.response.TransactionResponse;
 import com.finance.tracker.mapper.TransactionMapper;
+import com.finance.tracker.repository.AccountRepository;
 import com.finance.tracker.repository.BudgetRepository;
 import com.finance.tracker.repository.TransactionRepository;
 import com.finance.tracker.repository.UserRepository;
 import com.finance.tracker.service.TransactionService;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -28,18 +30,19 @@ public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final BudgetRepository budgetRepository;
+    private final AccountRepository accountRepository;
     private final UserRepository userRepository;
     private final TransactionMapper transactionMapper;
 
     @Override
-    public TransactionResponse getTransactionById(Long id) {
+    public TransactionResponse findById(Long id) {
         Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found " + id));
-        return transactionMapper.toResponse(transaction, true, true);
+        return transactionMapper.toResponse(transaction, true, true, true);
     }
 
     @Override
-    public List<TransactionResponse> getAllTransactions(boolean withEntityGraph) {
+    public List<TransactionResponse> findAll(boolean withEntityGraph) {
         List<Transaction> transactions = withEntityGraph
                 ? transactionRepository.findAllTransactionsWithEntityGraph()
                 : transactionRepository.findAllTransactions();
@@ -47,57 +50,66 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public List<TransactionResponse> getTransactionsByDateRange(LocalDate startDate, LocalDate endDate) {
-        if (startDate == null || endDate == null) {
+    public List<TransactionResponse> findByDateRange(LocalDateTime startDateTime,
+            LocalDateTime endDateTime) {
+        if (startDateTime == null || endDateTime == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Both startDate and endDate are required for date range filtering");
+                    "Both startDateTime and endDateTime are required for date range filtering");
         }
 
-        List<Transaction> transactions = transactionRepository.findByDateBetween(startDate, endDate);
+        if (endDateTime.isBefore(startDateTime)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "endDateTime must be greater than or equal to startDateTime");
+        }
+
+        List<Transaction> transactions = transactionRepository.findByOccurredAtBetween(startDateTime, endDateTime);
         return toResponses(transactions);
     }
 
     @Override
     @Transactional
-    public TransactionResponse createTransaction(TransactionRequest request) {
+    public TransactionResponse create(TransactionRequest request) {
+        User user = getUser(request.getUserId());
         Budget budget = getBudget(request.getBudgetId());
-        Transaction transaction = transactionMapper.fromRequest(request, budget);
-        if (request.getUserId() != null) {
-            transaction.setUser(getUser(request.getUserId()));
-        }
+        Account account = getAccount(request.getAccountId());
+
+        ensureSameOwner(user, budget, account);
+
+        Transaction transaction = transactionMapper.fromRequest(request, budget, account, user);
+        transaction.setDescription(request.getDescription().trim());
         Transaction saved = transactionRepository.save(transaction);
         return transactionMapper.toResponse(saved);
     }
 
     @Override
     @Transactional
-    public TransactionResponse updateTransaction(Long id, TransactionRequest request) {
+    public TransactionResponse update(Long id, TransactionRequest request) {
         Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found " + id));
-        if (request.getDate() != null) {
-            transaction.setDate(request.getDate());
-        }
-        if (request.getAmount() != null) {
-            transaction.setAmount(request.getAmount());
-        }
-        if (request.getDescription() != null) {
-            transaction.setDescription(request.getDescription());
-        }
-        if (request.getBudgetId() != null) {
-            Budget budget = getBudget(request.getBudgetId());
-            transaction.setBudget(budget);
-        }
-        if (request.getUserId() != null) {
-            transaction.setUser(getUser(request.getUserId()));
-        }
+
+        Budget budget = getBudget(request.getBudgetId());
+        Account account = getAccount(request.getAccountId());
+        User user = getUser(request.getUserId());
+
+        ensureSameOwner(user, budget, account);
+
+        transaction.setOccurredAt(request.getOccurredAt());
+        transaction.setAmount(request.getAmount());
+        transaction.setDescription(request.getDescription().trim());
+        transaction.setType(request.getType());
+        transaction.setBudget(budget);
+        transaction.setAccount(account);
+        transaction.setUser(user);
+
         Transaction saved = transactionRepository.save(transaction);
         return transactionMapper.toResponse(saved);
     }
 
     @Override
     @Transactional
-    public void deleteTransaction(Long id) {
+    public void delete(Long id) {
         if (!transactionRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found " + id);
         }
@@ -114,9 +126,30 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userId));
     }
 
+    private Account getAccount(Long accountId) {
+        return accountRepository.findById(accountId)
+                .orElseThrow(
+                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found: " + accountId));
+    }
+
+    private void ensureSameOwner(User user, Budget budget, Account account) {
+        if (budget.getUser() == null || account.getUser() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Budget and account must be owned by a user");
+        }
+
+        Long userId = user.getId();
+        if (!userId.equals(budget.getUser().getId()) || !userId.equals(account.getUser().getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Transaction user, account owner and budget owner must match");
+        }
+    }
+
     private List<TransactionResponse> toResponses(List<Transaction> transactions) {
         return transactions.stream()
-                .map(transaction -> transactionMapper.toResponse(transaction, true, true))
+                .map(transaction -> transactionMapper.toResponse(transaction, true, true, true))
                 .toList();
     }
 }

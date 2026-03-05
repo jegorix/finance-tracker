@@ -1,7 +1,5 @@
 package com.finance.tracker.dto.request;
 
-import java.util.List;
-
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -17,13 +15,11 @@ import lombok.Setter;
 public class UserRequest {
 
     @NotBlank
-    @Size(min = 3, max = 50)
+    @Size(max = 50)
     private String username;
 
+    @NotBlank
     @Email
+    @Size(max = 255)
     private String email;
-
-    private List<Long> accountIds;
-
-    private List<Long> transactionIds;
 }
