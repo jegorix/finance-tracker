@@ -3,14 +3,13 @@ package com.finance.tracker.service.impl;
 import com.finance.tracker.domain.Account;
 import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.Transaction;
-import com.finance.tracker.domain.User;
+import com.finance.tracker.dto.request.TransactionPatchRequest;
 import com.finance.tracker.dto.request.TransactionRequest;
 import com.finance.tracker.dto.response.TransactionResponse;
 import com.finance.tracker.mapper.TransactionMapper;
 import com.finance.tracker.repository.AccountRepository;
 import com.finance.tracker.repository.BudgetRepository;
 import com.finance.tracker.repository.TransactionRepository;
-import com.finance.tracker.repository.UserRepository;
 import com.finance.tracker.service.TransactionService;
 
 import java.time.LocalDateTime;
@@ -31,14 +30,13 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
     private final BudgetRepository budgetRepository;
     private final AccountRepository accountRepository;
-    private final UserRepository userRepository;
     private final TransactionMapper transactionMapper;
 
     @Override
     public TransactionResponse findById(Long id) {
         Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found " + id));
-        return transactionMapper.toResponse(transaction, true, true, true);
+        return transactionMapper.toResponse(transaction, true, true);
     }
 
     @Override
@@ -71,13 +69,12 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public TransactionResponse create(TransactionRequest request) {
-        User user = getUser(request.getUserId());
         Budget budget = getBudget(request.getBudgetId());
         Account account = getAccount(request.getAccountId());
 
-        ensureSameOwner(user, budget, account);
+        ensureSameOwner(budget, account);
 
-        Transaction transaction = transactionMapper.fromRequest(request, budget, account, user);
+        Transaction transaction = transactionMapper.fromRequest(request, budget, account);
         transaction.setDescription(request.getDescription().trim());
         Transaction saved = transactionRepository.save(transaction);
         return transactionMapper.toResponse(saved);
@@ -91,9 +88,8 @@ public class TransactionServiceImpl implements TransactionService {
 
         Budget budget = getBudget(request.getBudgetId());
         Account account = getAccount(request.getAccountId());
-        User user = getUser(request.getUserId());
 
-        ensureSameOwner(user, budget, account);
+        ensureSameOwner(budget, account);
 
         transaction.setOccurredAt(request.getOccurredAt());
         transaction.setAmount(request.getAmount());
@@ -101,7 +97,48 @@ public class TransactionServiceImpl implements TransactionService {
         transaction.setType(request.getType());
         transaction.setBudget(budget);
         transaction.setAccount(account);
-        transaction.setUser(user);
+
+        Transaction saved = transactionRepository.save(transaction);
+        return transactionMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public TransactionResponse patch(Long id, TransactionPatchRequest request) {
+        Transaction transaction = transactionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found " + id));
+
+        Budget budget = request.getBudgetId() != null
+                ? getBudget(request.getBudgetId())
+                : transaction.getBudget();
+        Account account = request.getAccountId() != null
+                ? getAccount(request.getAccountId())
+                : transaction.getAccount();
+
+        ensureSameOwner(budget, account);
+
+        if (request.getOccurredAt() != null) {
+            transaction.setOccurredAt(request.getOccurredAt());
+        }
+        if (request.getAmount() != null) {
+            transaction.setAmount(request.getAmount());
+        }
+        if (request.getDescription() != null) {
+            String description = request.getDescription().trim();
+            if (description.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Description must not be blank");
+            }
+            transaction.setDescription(description);
+        }
+        if (request.getType() != null) {
+            transaction.setType(request.getType());
+        }
+        if (request.getBudgetId() != null) {
+            transaction.setBudget(budget);
+        }
+        if (request.getAccountId() != null) {
+            transaction.setAccount(account);
+        }
 
         Transaction saved = transactionRepository.save(transaction);
         return transactionMapper.toResponse(saved);
@@ -121,35 +158,29 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Budget not found: " + budgetId));
     }
 
-    private User getUser(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userId));
-    }
-
     private Account getAccount(Long accountId) {
         return accountRepository.findById(accountId)
                 .orElseThrow(
                         () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found: " + accountId));
     }
 
-    private void ensureSameOwner(User user, Budget budget, Account account) {
+    private void ensureSameOwner(Budget budget, Account account) {
         if (budget.getUser() == null || account.getUser() == null) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Budget and account must be owned by a user");
         }
 
-        Long userId = user.getId();
-        if (!userId.equals(budget.getUser().getId()) || !userId.equals(account.getUser().getId())) {
+        if (!budget.getUser().getId().equals(account.getUser().getId())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Transaction user, account owner and budget owner must match");
+                    "Budget owner and account owner must match");
         }
     }
 
     private List<TransactionResponse> toResponses(List<Transaction> transactions) {
         return transactions.stream()
-                .map(transaction -> transactionMapper.toResponse(transaction, true, true, true))
+                .map(transaction -> transactionMapper.toResponse(transaction, true, true))
                 .toList();
     }
 }

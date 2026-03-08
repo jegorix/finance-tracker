@@ -63,9 +63,4 @@ public class Transaction {
     @JoinColumn(name = "account_id", nullable = false)
     @ToString.Exclude
     private Account account;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    @ToString.Exclude
-    private User user;
 }

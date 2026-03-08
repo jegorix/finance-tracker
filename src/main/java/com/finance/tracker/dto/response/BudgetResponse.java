@@ -20,7 +20,6 @@ public class BudgetResponse {
     private BigDecimal limitAmount;
     private LocalDate periodStart;
     private LocalDate periodEnd;
-    private BigDecimal spent;
     private Long userId;
     private List<Long> categoryIds;
     private List<Long> transactionIds;

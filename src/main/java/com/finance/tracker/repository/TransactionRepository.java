@@ -20,7 +20,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT t FROM Transaction t")
     List<Transaction> findAllTransactions();
 
-    @EntityGraph(attributePaths = { "budget", "account", "user" })
+    @EntityGraph(attributePaths = { "budget", "account" })
     @Query("SELECT t FROM Transaction t")
     List<Transaction> findAllTransactionsWithEntityGraph();
 }

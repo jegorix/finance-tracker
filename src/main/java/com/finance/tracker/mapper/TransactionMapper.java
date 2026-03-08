@@ -3,7 +3,6 @@ package com.finance.tracker.mapper;
 import com.finance.tracker.domain.Account;
 import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.Transaction;
-import com.finance.tracker.domain.User;
 import com.finance.tracker.dto.request.TransactionRequest;
 import com.finance.tracker.dto.response.TransactionResponse;
 import org.springframework.stereotype.Component;
@@ -12,14 +11,13 @@ import org.springframework.stereotype.Component;
 public class TransactionMapper {
 
     public TransactionResponse toResponse(Transaction transaction) {
-        return toResponse(transaction, true, true, true);
+        return toResponse(transaction, true, true);
     }
 
     public TransactionResponse toResponse(
             Transaction transaction,
             boolean includeBudget,
-            boolean includeAccount,
-            boolean includeUser) {
+            boolean includeAccount) {
         if (transaction == null) {
             return null;
         }
@@ -42,17 +40,11 @@ public class TransactionMapper {
             response.setAccountName(
                     transaction.getAccount() != null ? transaction.getAccount().getName() : null);
         }
-        if (includeUser) {
-            response.setUserId(
-                    transaction.getUser() != null ? transaction.getUser().getId() : null);
-            response.setUsername(
-                    transaction.getUser() != null ? transaction.getUser().getUsername() : null);
-        }
 
         return response;
     }
 
-    public Transaction fromRequest(TransactionRequest request, Budget budget, Account account, User user) {
+    public Transaction fromRequest(TransactionRequest request, Budget budget, Account account) {
         if (request == null) {
             return null;
         }
@@ -64,7 +56,6 @@ public class TransactionMapper {
         transaction.setType(request.getType());
         transaction.setBudget(budget);
         transaction.setAccount(account);
-        transaction.setUser(user);
 
         return transaction;
     }
@@ -83,8 +74,6 @@ public class TransactionMapper {
                 transaction.getBudget() != null ? transaction.getBudget().getId() : null);
         request.setAccountId(
                 transaction.getAccount() != null ? transaction.getAccount().getId() : null);
-        request.setUserId(
-                transaction.getUser() != null ? transaction.getUser().getId() : null);
 
         return request;
     }

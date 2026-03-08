@@ -1,5 +1,6 @@
 package com.finance.tracker.controller;
 
+import com.finance.tracker.dto.request.TransactionPatchRequest;
 import com.finance.tracker.dto.request.TransactionRequest;
 import com.finance.tracker.dto.response.TransactionResponse;
 import com.finance.tracker.service.TransactionService;
@@ -16,6 +17,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -59,6 +61,13 @@ public class TransactionController {
             @PathVariable("id") Long id,
             @Valid @RequestBody TransactionRequest request) {
         return ResponseEntity.ok(transactionService.update(id, request));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<TransactionResponse> patch(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody TransactionPatchRequest request) {
+        return ResponseEntity.ok(transactionService.patch(id, request));
     }
 
     @DeleteMapping("/{id}")

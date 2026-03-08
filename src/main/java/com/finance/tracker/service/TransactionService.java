@@ -1,5 +1,6 @@
 package com.finance.tracker.service;
 
+import com.finance.tracker.dto.request.TransactionPatchRequest;
 import com.finance.tracker.dto.request.TransactionRequest;
 import com.finance.tracker.dto.response.TransactionResponse;
 
@@ -17,6 +18,7 @@ public interface TransactionService {
     TransactionResponse create(TransactionRequest request);
 
     TransactionResponse update(Long id, TransactionRequest request);
+    TransactionResponse patch(Long id, TransactionPatchRequest request);
 
     void delete(Long id);
 }

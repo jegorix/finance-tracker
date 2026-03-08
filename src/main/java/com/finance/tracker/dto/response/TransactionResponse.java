@@ -25,6 +25,4 @@ public class TransactionResponse {
     private String budgetName;
     private Long accountId;
     private String accountName;
-    private Long userId;
-    private String username;
 }
