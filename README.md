@@ -47,7 +47,3 @@ CREATE DATABASE finance_tracker;
 
 **Entity Graph:** для демонстрации N+1 в транзакциях используется `@EntityGraph` для списка транзакций:
 `GET /api/v1/transactions?withEntityGraph=true`.
-
-## SonarQube Cloud
-
-Ссылка на [Sonar Analysis](https://sonarcloud.io/summary/new_code?id=ekuzm_FinanceTracker)
