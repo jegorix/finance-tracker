@@ -1,42 +1,57 @@
 databaseChangeLog:
   - changeSet:
-        id: 005-create-accounts
-        author: ekuzm
-        changes:
-          - createTable:
-                tableName: accounts
-                columns:
-                  - column:
-                        name: id
-                        type: BIGINT
-                        autoIncrement: true
-                        constraints:
-                            primaryKey: true
-                            primaryKeyName: pk_accounts
-                            nullable: false
-                  - column:
-                        name: name
-                        type: VARCHAR(50)
-                        constraints:
-                            nullable: false
-                  - column:
-                        name: type
-                        type: account_type
-                        constraints:
-                            nullable: false
-                  - column:
-                        name: balance
-                        type: NUMERIC(19,2)
-                        constraints:
-                            nullable: false
-                  - column:
-                        name: user_id
-                        type: BIGINT
-          - addForeignKeyConstraint:
-                baseTableName: accounts
-                baseColumnNames: user_id
-                referencedTableName: users
-                referencedColumnNames: id
-                constraintName: fk_accounts_user
-                onDelete: CASCADE
-                onUpdate: CASCADE
+      id: 005-create-accounts
+      author: ekuzm
+      changes:
+        - createTable:
+            tableName: accounts
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_accounts
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: account_type
+                  constraints:
+                    nullable: false
+              - column:
+                  name: balance
+                  type: NUMERIC(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: accounts
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_accounts_user
+            onDelete: CASCADE
+            onUpdate: CASCADE
+        - addUniqueConstraint:
+            tableName: accounts
+            columnNames: id, user_id
+            constraintName: uk_accounts_id_user
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              ALTER TABLE accounts
+                ADD CONSTRAINT ck_accounts_balance_non_negative CHECK (balance >= 0);
+
+              CREATE UNIQUE INDEX uk_accounts_user_name_ci
+                ON accounts (user_id, LOWER(name));

@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-fix-budgets-limit-amount-type
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              ALTER TABLE budgets
+                ALTER COLUMN limit_amount TYPE NUMERIC(19,2)
+                USING ROUND(limit_amount::numeric, 2);

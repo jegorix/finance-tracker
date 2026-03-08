@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-fix-money-column-types
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              ALTER TABLE accounts
+                ALTER COLUMN balance TYPE NUMERIC(19,2)
+                USING ROUND(balance::numeric, 2);
+
+              ALTER TABLE transactions
+                ALTER COLUMN amount TYPE NUMERIC(19,2)
+                USING ROUND(amount::numeric, 2);

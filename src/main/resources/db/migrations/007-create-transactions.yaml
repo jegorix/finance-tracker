@@ -1,0 +1,96 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-create-transactions
+      author: ekuzm
+      changes:
+        - createTable:
+            tableName: transactions
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_transactions
+                    nullable: false
+              - column:
+                  name: occurred_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: NUMERIC(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: transaction_type
+                  constraints:
+                    nullable: false
+              - column:
+                  name: budget_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: account_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: transactions
+            baseColumnNames: budget_id
+            referencedTableName: budgets
+            referencedColumnNames: id
+            constraintName: fk_transactions_budget
+            onDelete: RESTRICT
+            onUpdate: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: transactions
+            baseColumnNames: account_id
+            referencedTableName: accounts
+            referencedColumnNames: id
+            constraintName: fk_transactions_account
+            onDelete: RESTRICT
+            onUpdate: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: transactions
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_transactions_user
+            onDelete: CASCADE
+            onUpdate: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: transactions
+            baseColumnNames: account_id, user_id
+            referencedTableName: accounts
+            referencedColumnNames: id, user_id
+            constraintName: fk_transactions_account_user
+            onDelete: RESTRICT
+            onUpdate: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: transactions
+            baseColumnNames: budget_id, user_id
+            referencedTableName: budgets
+            referencedColumnNames: id, user_id
+            constraintName: fk_transactions_budget_user
+            onDelete: RESTRICT
+            onUpdate: CASCADE
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE transactions
+                ADD CONSTRAINT ck_transactions_amount_positive CHECK (amount > 0);

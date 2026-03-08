@@ -15,3 +15,9 @@ databaseChangeLog:
         file: db/migrations/007-create-transactions.yaml
   - include:
         file: db/migrations/008-create-budget-category.yaml
+  - include:
+        file: db/migrations/009-drop-user-id-from-transactions.yaml
+  - include:
+        file: db/migrations/010-fix-budgets-limit-amount-type.yaml
+  - include:
+        file: db/migrations/011-fix-money-column-types.yaml
