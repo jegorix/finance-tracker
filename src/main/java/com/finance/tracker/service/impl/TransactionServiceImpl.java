@@ -27,6 +27,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
 
+    private static final String TRANSACTION_NOT_FOUND_MESSAGE_PREFIX = "Transaction not found ";
+
     private final TransactionRepository transactionRepository;
     private final BudgetRepository budgetRepository;
     private final AccountRepository accountRepository;
@@ -35,7 +37,9 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public TransactionResponse findById(Long id) {
         Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found " + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        TRANSACTION_NOT_FOUND_MESSAGE_PREFIX + id));
         return transactionMapper.toResponse(transaction, true, true);
     }
 
@@ -84,7 +88,9 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public TransactionResponse update(Long id, TransactionRequest request) {
         Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found " + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        TRANSACTION_NOT_FOUND_MESSAGE_PREFIX + id));
 
         Budget budget = getBudget(request.getBudgetId());
         Account account = getAccount(request.getAccountId());
@@ -106,7 +112,9 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public TransactionResponse patch(Long id, TransactionPatchRequest request) {
         Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found " + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        TRANSACTION_NOT_FOUND_MESSAGE_PREFIX + id));
 
         Budget budget = request.getBudgetId() != null
                 ? getBudget(request.getBudgetId())
@@ -148,7 +156,9 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public void delete(Long id) {
         if (!transactionRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found " + id);
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    TRANSACTION_NOT_FOUND_MESSAGE_PREFIX + id);
         }
         transactionRepository.deleteById(id);
     }
