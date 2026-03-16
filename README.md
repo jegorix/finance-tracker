@@ -1,16 +1,68 @@
 # Finance Tracker
 
-**Finance Tracker** — это приложение для управления личными финансами, которое помогает пользователям контролировать доходы и расходы, а также анализировать своё финансовое состояние. Система предоставляет REST API для работы с данными о пользователях, счетах, транзакциях, категориях и бюджетах, обеспечивая удобное и структурированное взаимодействие с финансовой информацией.
+**Finance Tracker** — REST API для учета личных финансов: пользователи, счета, бюджеты, теги, транзакции и переводы между счетами.
 
-**Стек:** Java 21 · Spring Boot 4 · Spring Data JPA · PostgreSQL
+**Стек:** Java 21, Spring Boot 4.0.3, Spring Web MVC, Spring Data JPA, PostgreSQL, Liquibase, springdoc-openapi.
 
----
+## Что умеет сервис
 
-## Связи сущностей
+- CRUD для `users`, `accounts`, `budgets`, `categories`, `transactions`
+- перевод денег между счетами одного пользователя через `/api/v1/account/transfer`
+- поиск пользователей по типу счета и диапазону бюджета через JPQL и native SQL
+- фильтрация транзакций по диапазону дат
+- пагинация и сортировка бюджетов
+- единый формат ошибок, аспектное логирование сервисов и простой in-memory cache для чтения пользователей и поисковых запросов
 
-![ER diagram](./docs/ER-diagram.png)
+## API
 
----
+Полная документация: [docs/api.md](docs/api.md)
+
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+- Base URL: `http://localhost:8080`
+
+Основные группы endpoint'ов:
+
+- `/api/v1/users`
+- `/api/v1/accounts`
+- `/api/v1/account/transfer`
+- `/api/v1/budgets`
+- `/api/v1/categories`
+- `/api/v1/transactions`
+
+## Формат ошибок
+
+Все ошибки API возвращаются в одном из двух JSON-форматов.
+
+Validation error:
+
+```json
+{
+  "status": 400,
+  "message": "Validation failed",
+  "timestamp": "2026-03-10T12:00:00",
+  "errors": {
+    "username": "must not be blank"
+  }
+}
+```
+
+Обычная бизнес-ошибка:
+
+```json
+{
+  "status": 404,
+  "message": "User not found 1",
+  "timestamp": "2026-03-10T12:00:00"
+}
+```
+
+Дополнительно сервис возвращает:
+
+- `Invalid value '...' for parameter '...'` для некорректных query/path параметров
+- `Invalid value for field '...'` для невалидных enum/date значений в JSON
+- `Malformed JSON request` для поврежденного JSON
+
 
 ## API Endpoints
 
