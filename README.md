@@ -1,6 +1,6 @@
 # Finance Tracker
 
-**Finance Tracker** — REST API для учета личных финансов: пользователи, счета, бюджеты, теги, транзакции и переводы между счетами.
+**Finance Tracker** — REST API для учета личных финансов: пользователи, счета, бюджеты, категории, транзакции и переводы между счетами.
 
 **Стек:** Java 21, Spring Boot 4.0.3, Spring Web MVC, Spring Data JPA, PostgreSQL, Liquibase, springdoc-openapi.
 
