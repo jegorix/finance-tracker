@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-restore-budget-transaction-delete-restrict
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              ALTER TABLE transactions
+                DROP CONSTRAINT IF EXISTS fk_transactions_budget;
+
+              ALTER TABLE transactions
+                ADD CONSTRAINT fk_transactions_budget
+                FOREIGN KEY (budget_id)
+                REFERENCES budgets (id)
+                ON DELETE RESTRICT
+                ON UPDATE CASCADE;

@@ -55,7 +55,7 @@ public class Transaction {
     private TransactionType type;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "budget_id", nullable = false)
+    @JoinColumn(name = "budget_id")
     @ToString.Exclude
     private Budget budget;
 

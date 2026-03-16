@@ -265,74 +265,112 @@
 2. Как `@EntityGraph` уменьшает количество запросов?
 3. Чем отличается от `fetch join`?
 
-## 4) Частичное сохранение без транзакции и rollback с транзакцией
+## 4) Перевод между счетами: rollback с транзакцией и частичное сохранение без транзакции
 
-Эндпоинт: `/users/create-accounts-and-budgets?transactional=true|false`
+Эндпоинт: `/accounts/transfer?transactional=true|false`
 
-### 4.1 Без транзакции (частичное сохранение)
+### Подготовка данных
 
-- Method: `POST`
-- URL: `{{baseUrl}}/users/create-accounts-and-budgets`
-- Query Params:
-  - `transactional = false`
-- Body:
+1. Создайте пользователя:
 
 ```json
+POST {{baseUrl}}/users
 {
-  "username": "no_tx_user",
-  "email": "no_tx_user@example.com",
-  "failAfterAccounts": true,
-  "accounts": [
-    { "name": "NoTx Card", "type": "DEBIT", "balance": 1000.00, "userId": {{userId}} }
-  ],
-  "budgets": [
-    {
-      "name": "NoTx Budget",
-      "limitAmount": 500.00,
-      "periodStart": "2026-03-01",
-      "periodEnd": "2026-03-31",
-      "userId": {{userId}},
-      "categoryIds": []
-    }
-  ]
+  "username": "transfer_demo_user",
+  "email": "transfer_demo_user@example.com"
 }
 ```
 
-Проверка: сделайте `GET /users`, `GET /accounts`, `GET /budgets`.
+2. Создайте исходный счет:
 
-### 4.2 С транзакцией (полный rollback)
+```json
+POST {{baseUrl}}/accounts
+{
+  "name": "Transfer Source Card",
+  "type": "DEBIT",
+  "balance": 1000.00,
+  "userId": {{userId}}
+}
+```
+
+3. Создайте целевой счет:
+
+```json
+POST {{baseUrl}}/accounts
+{
+  "name": "Transfer Target Card",
+  "type": "DEBIT",
+  "balance": 300.00,
+  "userId": {{userId}}
+}
+```
+
+4. Зафиксируйте стартовые балансы:
+
+- `GET {{baseUrl}}/accounts/{{fromAccountId}}`
+- `GET {{baseUrl}}/accounts/{{toAccountId}}`
+
+Ожидаемо перед демонстрацией:
+
+- исходный счет: `1000.00`
+- целевой счет: `300.00`
+
+### 4.1 С транзакцией (`@Transactional`) и умышленной ошибкой
 
 - Method: `POST`
-- URL: `{{baseUrl}}/users/create-accounts-and-budgets`
+- URL: `{{baseUrl}}/accounts/transfer`
 - Query Params:
   - `transactional = true`
 - Body:
 
 ```json
 {
-  "username": "tx_user",
-  "email": "tx_user@example.com",
-  "failAfterAccounts": true,
-  "accounts": [
-    { "name": "Tx Card", "type": "DEBIT", "balance": 1000.00, "userId": {{userId}} }
-  ],
-  "budgets": [
-    {
-      "name": "Tx Budget",
-      "limitAmount": 500.00,
-      "periodStart": "2026-03-01",
-      "periodEnd": "2026-03-31",
-      "userId": {{userId}},
-      "categoryIds": []
-    }
-  ]
+  "fromAccountId": {{fromAccountId}},
+  "toAccountId": {{toAccountId}},
+  "amount": 200.00,
+  "failAfterDebit": true
 }
 ```
 
-Проверка: снова `GET /users`, `GET /accounts`, `GET /budgets`.
+Ожидаемый результат:
+
+- запрос завершится с `500`
+- после этого:
+  - `GET /accounts/{{fromAccountId}}` покажет `1000.00`
+  - `GET /accounts/{{toAccountId}}` покажет `300.00`
+
+Пояснение: деньги попытались списать, но из-за ошибки вся транзакция откатилась.
+
+### 4.2 Без транзакции и с той же умышленной ошибкой
+
+Перед этим верните счета в исходное состояние, если вы уже делали успешные переводы. Для сценария выше ничего дополнительно делать не нужно, потому что после rollback балансы уже остались `1000.00` и `300.00`.
+
+- Method: `POST`
+- URL: `{{baseUrl}}/accounts/transfer`
+- Query Params:
+  - `transactional = false`
+- Body:
+
+```json
+{
+  "fromAccountId": {{fromAccountId}},
+  "toAccountId": {{toAccountId}},
+  "amount": 200.00,
+  "failAfterDebit": true
+}
+```
+
+Ожидаемый результат:
+
+- запрос завершится с `500`
+- после этого:
+  - `GET /accounts/{{fromAccountId}}` покажет `800.00`
+  - `GET /accounts/{{toAccountId}}` покажет `300.00`
+
+Пояснение: списание с исходного счета уже сохранилось, а зачисление на целевой счет не произошло.
 
 ### Вопросы для преподавателя (пункт 4)
 
-1. Почему без транзакции данные сохраняются частично?
-2. Почему с `@Transactional` выполняется rollback?
-3. Какие операции обязательно делать транзакционными в проде?
+1. Почему с `@Transactional` списание откатилось?
+2. Почему без транзакции списание сохранилось частично?
+3. Почему перевод денег между счетами обязательно должен быть атомарной операцией?

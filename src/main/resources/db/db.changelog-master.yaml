@@ -21,3 +21,7 @@ databaseChangeLog:
         file: db/migrations/010-fix-budgets-limit-amount-type.yaml
   - include:
         file: db/migrations/011-fix-money-column-types.yaml
+  - include:
+        file: db/migrations/013-restore-budget-transaction-delete-restrict.yaml
+  - include:
+        file: db/migrations/014-set-null-transaction-budget-on-budget-delete.yaml

@@ -1,7 +1,9 @@
 package com.finance.tracker.controller;
 
 import com.finance.tracker.dto.request.AccountRequest;
+import com.finance.tracker.dto.request.TransferDemoRequest;
 import com.finance.tracker.dto.response.AccountResponse;
+import com.finance.tracker.dto.response.TransferDemoResponse;
 import com.finance.tracker.service.AccountService;
 
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -47,6 +50,16 @@ public class AccountController {
             @PathVariable("id") Long id,
             @Valid @RequestBody AccountRequest request) {
         return ResponseEntity.ok(accountService.update(id, request));
+    }
+
+    @PostMapping("/transfer")
+    public ResponseEntity<TransferDemoResponse> transfer(
+            @Valid @RequestBody TransferDemoRequest request,
+            @RequestParam(defaultValue = "true") boolean transactional) {
+        TransferDemoResponse response = transactional
+                ? accountService.transferTx(request)
+                : accountService.transferNoTx(request);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")

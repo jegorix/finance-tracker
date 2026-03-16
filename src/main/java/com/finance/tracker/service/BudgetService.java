@@ -1,5 +1,6 @@
 package com.finance.tracker.service;
 
+import com.finance.tracker.dto.request.BudgetPatchRequest;
 import com.finance.tracker.dto.request.BudgetRequest;
 import com.finance.tracker.dto.response.BudgetResponse;
 
@@ -13,6 +14,8 @@ public interface BudgetService {
     BudgetResponse create(BudgetRequest request);
 
     BudgetResponse update(Long id, BudgetRequest request);
+
+    BudgetResponse patch(Long id, BudgetPatchRequest request);
 
     void delete(Long id);
 }

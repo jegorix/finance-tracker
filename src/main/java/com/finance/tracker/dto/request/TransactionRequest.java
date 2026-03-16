@@ -37,7 +37,6 @@ public class TransactionRequest {
     @NotNull
     private TransactionType type;
 
-    @NotNull
     @Positive
     private Long budgetId;
 

@@ -1,5 +1,6 @@
 package com.finance.tracker.controller;
 
+import com.finance.tracker.dto.request.BudgetPatchRequest;
 import com.finance.tracker.dto.request.BudgetRequest;
 import com.finance.tracker.dto.response.BudgetResponse;
 import com.finance.tracker.service.BudgetService;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -47,6 +49,13 @@ public class BudgetController {
             @PathVariable("id") Long id,
             @Valid @RequestBody BudgetRequest request) {
         return ResponseEntity.ok(budgetService.update(id, request));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<BudgetResponse> patch(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody BudgetPatchRequest request) {
+        return ResponseEntity.ok(budgetService.patch(id, request));
     }
 
     @DeleteMapping("/{id}")
