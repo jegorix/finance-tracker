@@ -2,8 +2,10 @@
 <configuration>
 
     <property name="LOG_DIR" value="logs" />
+    <conversionRule conversionWord="elapsedMs"
+                    converterClass="com.finance.tracker.logging.RequestElapsedTimeConverter" />
     <property name="LOG_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{40} - %msg%n" />
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [elapsed=%elapsedMs] %logger{40} - %msg%n" />
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
