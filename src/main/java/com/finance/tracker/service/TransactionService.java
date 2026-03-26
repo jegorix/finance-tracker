@@ -1,9 +1,9 @@
 package com.finance.tracker.service;
 
 import java.math.BigDecimal;
-import com.finance.tracker.dto.request.TransactionPatchRequest;
 import com.finance.tracker.dto.request.TransactionSearchQueryMode;
 import com.finance.tracker.dto.request.TransactionRequest;
+import com.finance.tracker.dto.request.TransactionUpdateRequest;
 import com.finance.tracker.dto.response.TransactionResponse;
 import com.finance.tracker.dto.response.TransactionSearchResult;
 
@@ -32,8 +32,12 @@ public interface TransactionService {
 
     TransactionResponse create(TransactionRequest request);
 
+    List<TransactionResponse> createBulkTx(List<TransactionRequest> requests);
+
+    List<TransactionResponse> createBulkNoTx(List<TransactionRequest> requests);
+
     TransactionResponse update(Long id, TransactionRequest request);
-    TransactionResponse patch(Long id, TransactionPatchRequest request);
+    TransactionResponse patch(Long id, TransactionUpdateRequest request);
 
     void delete(Long id);
 }

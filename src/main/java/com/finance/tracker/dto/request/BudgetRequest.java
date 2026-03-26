@@ -1,5 +1,6 @@
 package com.finance.tracker.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -18,6 +19,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Request body for budget creation or full update")
 public class BudgetRequest {
 
     @NotBlank

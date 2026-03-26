@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 import com.finance.tracker.domain.TransactionType;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -20,6 +21,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Request body for transaction creation or full update")
 public class TransactionRequest {
 
     @NotNull

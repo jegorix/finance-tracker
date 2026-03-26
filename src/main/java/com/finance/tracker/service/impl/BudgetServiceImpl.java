@@ -4,9 +4,12 @@ import com.finance.tracker.cache.TransactionSearchIndexInvalidator;
 import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.Category;
 import com.finance.tracker.domain.User;
-import com.finance.tracker.dto.request.BudgetPatchRequest;
 import com.finance.tracker.dto.request.BudgetRequest;
+import com.finance.tracker.dto.request.BudgetUpdateRequest;
 import com.finance.tracker.dto.response.BudgetResponse;
+import com.finance.tracker.exception.BadRequestException;
+import com.finance.tracker.exception.DuplicateResourceException;
+import com.finance.tracker.exception.ResourceNotFoundException;
 import com.finance.tracker.mapper.BudgetMapper;
 import com.finance.tracker.repository.BudgetRepository;
 import com.finance.tracker.repository.CategoryRepository;
@@ -15,10 +18,8 @@ import com.finance.tracker.service.BudgetService;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional(readOnly = true)
@@ -33,9 +34,7 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     public BudgetResponse findById(Long id) {
-        Budget budget = budgetRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Budget not found " + id));
-        return budgetMapper.toResponse(budget);
+        return budgetMapper.toResponse(getBudget(id));
     }
 
     @Override
@@ -48,9 +47,11 @@ public class BudgetServiceImpl implements BudgetService {
     public BudgetResponse create(BudgetRequest request) {
         User user = getUser(request.getUserId());
         List<Category> categories = getCategoriesForUserIfPresent(request.getCategoryIds(), user.getId());
+        String normalizedName = normalizeName(request.getName());
+        ensureUniqueBudgetName(normalizedName, user.getId(), null);
 
         Budget budget = budgetMapper.fromRequest(request, user, categories);
-        budget.setName(request.getName().trim());
+        budget.setName(normalizedName);
         linkBudgetAndCategories(budget, categories);
 
         Budget saved = budgetRepository.save(budget);
@@ -61,12 +62,13 @@ public class BudgetServiceImpl implements BudgetService {
     @Override
     @Transactional
     public BudgetResponse update(Long id, BudgetRequest request) {
-        Budget budget = budgetRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Budget not found " + id));
+        Budget budget = getBudget(id);
         User user = getUser(request.getUserId());
         List<Category> categories = getCategoriesForUserIfPresent(request.getCategoryIds(), user.getId());
+        String normalizedName = normalizeName(request.getName());
+        ensureUniqueBudgetName(normalizedName, user.getId(), budget.getId());
 
-        budget.setName(request.getName().trim());
+        budget.setName(normalizedName);
         budget.setLimitAmount(request.getLimitAmount());
         budget.setPeriodStart(request.getPeriodStart());
         budget.setPeriodEnd(request.getPeriodEnd());
@@ -80,22 +82,19 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     @Transactional
-    public BudgetResponse patch(Long id, BudgetPatchRequest request) {
-        Budget budget = budgetRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Budget not found " + id));
+    public BudgetResponse patch(Long id, BudgetUpdateRequest request) {
+        Budget budget = getBudget(id);
 
         User user = request.getUserId() != null ? getUser(request.getUserId()) : budget.getUser();
         List<Long> targetCategoryIds = request.getCategoryIds() != null
                 ? request.getCategoryIds()
                 : budget.getCategories().stream().map(Category::getId).toList();
         List<Category> categories = getCategoriesForUserIfPresent(targetCategoryIds, user.getId());
+        String targetName = request.getName() != null ? normalizeName(request.getName()) : budget.getName();
+        ensureUniqueBudgetName(targetName, user.getId(), budget.getId());
 
         if (request.getName() != null) {
-            String name = request.getName().trim();
-            if (name.isBlank()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Budget name must not be blank");
-            }
-            budget.setName(name);
+            budget.setName(targetName);
         }
         if (request.getLimitAmount() != null) {
             budget.setLimitAmount(request.getLimitAmount());
@@ -122,7 +121,7 @@ public class BudgetServiceImpl implements BudgetService {
     @Transactional
     public void delete(Long id) {
         if (!budgetRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Budget not found " + id);
+            throw new ResourceNotFoundException("Budget not found " + id);
         }
         budgetRepository.deleteById(id);
         transactionSearchIndexInvalidator.invalidateAfterCommitOrNow();
@@ -130,15 +129,13 @@ public class BudgetServiceImpl implements BudgetService {
 
     private User getUser(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found " + userId));
     }
 
     private List<Category> getCategoriesForUser(List<Long> categoryIds, Long userId) {
         List<Category> categories = categoryRepository.findAllByIdInAndUserId(categoryIds, userId);
         if (categories.size() != categoryIds.size()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Some categories not found for user " + userId);
+            throw new ResourceNotFoundException("Some categories not found for user " + userId);
         }
         return categories;
     }
@@ -152,9 +149,7 @@ public class BudgetServiceImpl implements BudgetService {
 
     private void validatePeriodRange(LocalDate periodStart, LocalDate periodEnd) {
         if (periodStart != null && periodEnd != null && periodEnd.isBefore(periodStart)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "periodEnd must be greater than or equal to periodStart");
+            throw new BadRequestException("periodEnd must be greater than or equal to periodStart");
         }
     }
 
@@ -174,5 +169,27 @@ public class BudgetServiceImpl implements BudgetService {
 
     private List<BudgetResponse> toResponses(List<Budget> budgets, boolean includeTransactions) {
         return budgets.stream().map(budget -> budgetMapper.toResponse(budget, includeTransactions)).toList();
+    }
+
+    private Budget getBudget(Long id) {
+        return budgetRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Budget not found " + id));
+    }
+
+    private void ensureUniqueBudgetName(String name, Long userId, Long currentBudgetId) {
+        boolean exists = currentBudgetId == null
+                ? budgetRepository.existsByNameIgnoreCaseAndUserId(name, userId)
+                : budgetRepository.existsByNameIgnoreCaseAndUserIdAndIdNot(name, userId, currentBudgetId);
+        if (exists) {
+            throw new DuplicateResourceException("Budget with name '" + name + "' already exists for user " + userId);
+        }
+    }
+
+    private String normalizeName(String value) {
+        String normalized = value == null ? null : value.trim();
+        if (normalized == null || normalized.isBlank()) {
+            throw new BadRequestException("Budget name must not be blank");
+        }
+        return normalized;
     }
 }

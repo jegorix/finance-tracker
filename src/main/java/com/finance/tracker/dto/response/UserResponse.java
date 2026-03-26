@@ -1,5 +1,6 @@
 package com.finance.tracker.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -11,6 +12,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Schema(description = "User response DTO")
 public class UserResponse {
 
     private Long id;

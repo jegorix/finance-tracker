@@ -34,3 +34,4 @@ build/
 
 .env
 application-secrets.properties
+logs/

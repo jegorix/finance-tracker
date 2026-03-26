@@ -1,5 +1,6 @@
 package com.finance.tracker.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -13,6 +14,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Budget response DTO")
 public class BudgetResponse {
 
     private Long id;

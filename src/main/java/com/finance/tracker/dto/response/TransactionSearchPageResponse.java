@@ -1,5 +1,6 @@
 package com.finance.tracker.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -9,6 +10,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
+@Schema(description = "Paged transaction search result")
 public class TransactionSearchPageResponse {
 
     private final List<TransactionResponse> content;

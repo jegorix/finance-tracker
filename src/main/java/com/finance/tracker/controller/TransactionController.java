@@ -1,15 +1,14 @@
 package com.finance.tracker.controller;
 
-import java.math.BigDecimal;
-import com.finance.tracker.dto.request.TransactionPatchRequest;
-import com.finance.tracker.dto.request.TransactionSearchQueryMode;
+import com.finance.tracker.controller.api.TransactionControllerApi;
+import com.finance.tracker.dto.request.TransactionSearchRequest;
 import com.finance.tracker.dto.request.TransactionRequest;
+import com.finance.tracker.dto.request.TransactionUpdateRequest;
 import com.finance.tracker.dto.response.TransactionSearchPageResponse;
 import com.finance.tracker.dto.response.TransactionResponse;
 import com.finance.tracker.dto.response.TransactionSearchResult;
 import com.finance.tracker.service.TransactionService;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -20,8 +19,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,21 +31,23 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
+@Validated
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/transactions")
-public class TransactionController {
+public class TransactionController implements TransactionControllerApi {
 
     private final TransactionService transactionService;
 
     @GetMapping("/{id}")
-    public ResponseEntity<TransactionResponse> getById(@PathVariable final Long id) {
+    @Override
+    public ResponseEntity<TransactionResponse> getById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(transactionService.findById(id));
     }
 
     @GetMapping
+    @Override
     public ResponseEntity<List<TransactionResponse>> getAll(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) final LocalDateTime startDateTime,
@@ -58,39 +61,23 @@ public class TransactionController {
     }
 
     @GetMapping("/search")
+    @Override
     public ResponseEntity<TransactionSearchPageResponse> search(
-            @RequestParam(required = false) final String budgetName,
-            @RequestParam(required = false) final String accountName,
-            @RequestParam(required = false) final BigDecimal minAmount,
-            @RequestParam(required = false) final BigDecimal maxAmount,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) final LocalDateTime startDateTime,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) final LocalDateTime endDateTime,
-            @RequestParam(defaultValue = "JPQL") final TransactionSearchQueryMode queryMode,
-            @RequestParam(defaultValue = "0") final int page,
-            @RequestParam(defaultValue = "5") final int size,
-            @RequestParam(defaultValue = "occurredAt") final String sortBy,
-            @RequestParam(defaultValue = "false") final boolean ascending) {
-        if (page < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be greater than or equal to 0");
-        }
-        if (size < 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be greater than 0");
-        }
-
+            @ModelAttribute TransactionSearchRequest request) {
         PageRequest pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by(ascending ? Sort.Direction.ASC : Sort.Direction.DESC, sortBy));
+                request.getPage(),
+                request.getSize(),
+                Sort.by(
+                        request.isAscending() ? Sort.Direction.ASC : Sort.Direction.DESC,
+                        request.getSortBy().trim()));
         TransactionSearchResult result = transactionService.search(
-                queryMode,
-                budgetName,
-                accountName,
-                minAmount,
-                maxAmount,
-                startDateTime,
-                endDateTime,
+                request.getQueryMode(),
+                request.getBudgetName(),
+                request.getAccountName(),
+                request.getMinAmount(),
+                request.getMaxAmount(),
+                request.getStartDateTime(),
+                request.getEndDateTime(),
                 pageable);
         return ResponseEntity.ok()
                 .header("X-Transaction-Search-Source", result.getSource().name())
@@ -98,26 +85,41 @@ public class TransactionController {
     }
 
     @PostMapping
-    public ResponseEntity<TransactionResponse> create(@Valid @RequestBody TransactionRequest request) {
+    @Override
+    public ResponseEntity<TransactionResponse> create(@RequestBody TransactionRequest request) {
         TransactionResponse response = transactionService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PostMapping("/bulk")
+    @Override
+    public ResponseEntity<List<TransactionResponse>> createBulk(
+            @RequestBody List<TransactionRequest> requests,
+            @RequestParam(defaultValue = "true") boolean transactional) {
+        List<TransactionResponse> response = transactional
+                ? transactionService.createBulkTx(requests)
+                : transactionService.createBulkNoTx(requests);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @PutMapping("/{id}")
+    @Override
     public ResponseEntity<TransactionResponse> update(
             @PathVariable("id") Long id,
-            @Valid @RequestBody TransactionRequest request) {
+            @RequestBody TransactionRequest request) {
         return ResponseEntity.ok(transactionService.update(id, request));
     }
 
     @PatchMapping("/{id}")
+    @Override
     public ResponseEntity<TransactionResponse> patch(
             @PathVariable("id") Long id,
-            @Valid @RequestBody TransactionPatchRequest request) {
+            @RequestBody TransactionUpdateRequest request) {
         return ResponseEntity.ok(transactionService.patch(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @Override
     public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
         transactionService.delete(id);
         return ResponseEntity.noContent().build();

@@ -7,12 +7,15 @@ import com.finance.tracker.domain.Transaction;
 import com.finance.tracker.cache.TransactionSearchCacheKey;
 import com.finance.tracker.cache.TransactionSearchIndex;
 import com.finance.tracker.cache.TransactionSearchIndexInvalidator;
-import com.finance.tracker.dto.request.TransactionPatchRequest;
 import com.finance.tracker.dto.request.TransactionSearchQueryMode;
 import com.finance.tracker.dto.request.TransactionRequest;
+import com.finance.tracker.dto.request.TransactionUpdateRequest;
 import com.finance.tracker.dto.response.TransactionResponse;
 import com.finance.tracker.dto.response.TransactionSearchResult;
 import com.finance.tracker.dto.response.TransactionSearchSource;
+import com.finance.tracker.exception.BadRequestException;
+import com.finance.tracker.exception.ConflictException;
+import com.finance.tracker.exception.ResourceNotFoundException;
 import com.finance.tracker.mapper.TransactionMapper;
 import com.finance.tracker.repository.AccountRepository;
 import com.finance.tracker.repository.BudgetRepository;
@@ -21,16 +24,16 @@ import com.finance.tracker.service.TransactionService;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +49,8 @@ public class TransactionServiceImpl implements TransactionService {
     private static final BigDecimal SEARCH_MAX_AMOUNT = new BigDecimal("999999999999.99");
     private static final LocalDateTime SEARCH_START_DATE_TIME = LocalDateTime.of(1, 1, 1, 0, 0);
     private static final LocalDateTime SEARCH_END_DATE_TIME = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
+    private static final String BULK_REQUEST_EMPTY_MESSAGE =
+            "Bulk transaction request must contain at least one item";
 
     private final TransactionRepository transactionRepository;
     private final BudgetRepository budgetRepository;
@@ -56,11 +61,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public TransactionResponse findById(Long id) {
-        Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        TRANSACTION_NOT_FOUND_MESSAGE_PREFIX + id));
-        return transactionMapper.toResponse(transaction, true, true);
+        return transactionMapper.toResponse(getTransaction(id), true, true);
     }
 
     @Override
@@ -75,15 +76,11 @@ public class TransactionServiceImpl implements TransactionService {
     public List<TransactionResponse> findByDateRange(LocalDateTime startDateTime,
             LocalDateTime endDateTime) {
         if (startDateTime == null || endDateTime == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Both startDateTime and endDateTime are required for date range filtering");
+            throw new BadRequestException("Both startDateTime and endDateTime are required for date range filtering");
         }
 
         if (endDateTime.isBefore(startDateTime)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "endDateTime must be greater than or equal to startDateTime");
+            throw new BadRequestException("endDateTime must be greater than or equal to startDateTime");
         }
 
         List<Transaction> transactions = transactionRepository.findByOccurredAtBetween(startDateTime, endDateTime);
@@ -158,25 +155,25 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public TransactionResponse create(TransactionRequest request) {
-        Budget budget = getBudgetIfPresent(request.getBudgetId());
-        Account account = getAccount(request.getAccountId());
+        return transactionMapper.toResponse(createTransactionEntity(request));
+    }
 
-        ensureSameOwner(budget, account);
+    @Override
+    @Transactional
+    public List<TransactionResponse> createBulkTx(List<TransactionRequest> requests) {
+        return createBulkInternal(requests);
+    }
 
-        Transaction transaction = transactionMapper.fromRequest(request, budget, account);
-        transaction.setDescription(request.getDescription().trim());
-        Transaction saved = transactionRepository.save(transaction);
-        transactionSearchIndexInvalidator.invalidateAfterCommitOrNow();
-        return transactionMapper.toResponse(saved);
+    @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public List<TransactionResponse> createBulkNoTx(List<TransactionRequest> requests) {
+        return createBulkInternal(requests);
     }
 
     @Override
     @Transactional
     public TransactionResponse update(Long id, TransactionRequest request) {
-        Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        TRANSACTION_NOT_FOUND_MESSAGE_PREFIX + id));
+        Transaction transaction = getTransaction(id);
 
         Budget budget = getBudgetIfPresent(request.getBudgetId());
         Account account = getAccount(request.getAccountId());
@@ -185,7 +182,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         transaction.setOccurredAt(request.getOccurredAt());
         transaction.setAmount(request.getAmount());
-        transaction.setDescription(request.getDescription().trim());
+        transaction.setDescription(normalizeDescription(request.getDescription()));
         transaction.setType(request.getType());
         transaction.setBudget(budget);
         transaction.setAccount(account);
@@ -197,11 +194,8 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional
-    public TransactionResponse patch(Long id, TransactionPatchRequest request) {
-        Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        TRANSACTION_NOT_FOUND_MESSAGE_PREFIX + id));
+    public TransactionResponse patch(Long id, TransactionUpdateRequest request) {
+        Transaction transaction = getTransaction(id);
 
         Budget budget = request.getBudgetId() != null
                 ? getBudget(request.getBudgetId())
@@ -219,11 +213,7 @@ public class TransactionServiceImpl implements TransactionService {
             transaction.setAmount(request.getAmount());
         }
         if (request.getDescription() != null) {
-            String description = request.getDescription().trim();
-            if (description.isBlank()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Description must not be blank");
-            }
-            transaction.setDescription(description);
+            transaction.setDescription(normalizeDescription(request.getDescription()));
         }
         if (request.getType() != null) {
             transaction.setType(request.getType());
@@ -244,9 +234,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public void delete(Long id) {
         if (!transactionRepository.existsById(id)) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    TRANSACTION_NOT_FOUND_MESSAGE_PREFIX + id);
+            throw new ResourceNotFoundException(TRANSACTION_NOT_FOUND_MESSAGE_PREFIX + id);
         }
         transactionRepository.deleteById(id);
         transactionSearchIndexInvalidator.invalidateAfterCommitOrNow();
@@ -302,15 +290,11 @@ public class TransactionServiceImpl implements TransactionService {
             LocalDateTime startDateTime,
             LocalDateTime endDateTime) {
         if (minAmount != null && maxAmount != null && maxAmount.compareTo(minAmount) < 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "maxAmount must be greater than or equal to minAmount");
+            throw new BadRequestException("maxAmount must be greater than or equal to minAmount");
         }
 
         if (startDateTime != null && endDateTime != null && endDateTime.isBefore(startDateTime)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "endDateTime must be greater than or equal to startDateTime");
+            throw new BadRequestException("endDateTime must be greater than or equal to startDateTime");
         }
     }
 
@@ -367,9 +351,7 @@ public class TransactionServiceImpl implements TransactionService {
             case "amount" -> "amount";
             case "description" -> "description";
             case "type" -> "type";
-            default -> throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Unsupported sort property for JPQL query: " + property);
+            default -> throw new BadRequestException("Unsupported sort property for JPQL query: " + property);
         };
     }
 
@@ -382,9 +364,7 @@ public class TransactionServiceImpl implements TransactionService {
             case "type" -> "type";
             case "budgetId", "budget_id" -> "budget_id";
             case "accountId", "account_id" -> "account_id";
-            default -> throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Unsupported sort property for native query: " + property);
+            default -> throw new BadRequestException("Unsupported sort property for native query: " + property);
         };
     }
 
@@ -413,9 +393,35 @@ public class TransactionServiceImpl implements TransactionService {
         return value == null ? "-" : value.toString();
     }
 
+    private Transaction createTransactionEntity(TransactionRequest request) {
+        Budget budget = Optional.ofNullable(request.getBudgetId())
+                .map(this::getBudget)
+                .orElse(null);
+        Account account = getAccount(request.getAccountId());
+
+        ensureSameOwner(budget, account);
+
+        Transaction transaction = transactionMapper.fromRequest(request, budget, account);
+        transaction.setDescription(normalizeDescription(request.getDescription()));
+        Transaction saved = transactionRepository.save(transaction);
+        transactionSearchIndexInvalidator.invalidateAfterCommitOrNow();
+        return saved;
+    }
+
+    private List<TransactionResponse> createBulkInternal(List<TransactionRequest> requests) {
+        List<TransactionRequest> bulkRequests = Optional.ofNullable(requests)
+                .filter(items -> !items.isEmpty())
+                .orElseThrow(() -> new BadRequestException(BULK_REQUEST_EMPTY_MESSAGE));
+
+        return bulkRequests.stream()
+                .map(this::createTransactionEntity)
+                .map(transaction -> transactionMapper.toResponse(transaction, true, true))
+                .toList();
+    }
+
     private Budget getBudget(Long budgetId) {
         return budgetRepository.findById(budgetId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Budget not found: " + budgetId));
+                .orElseThrow(() -> new ResourceNotFoundException("Budget not found: " + budgetId));
     }
 
     private Budget getBudgetIfPresent(Long budgetId) {
@@ -427,15 +433,12 @@ public class TransactionServiceImpl implements TransactionService {
 
     private Account getAccount(Long accountId) {
         return accountRepository.findById(accountId)
-                .orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found: " + accountId));
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountId));
     }
 
     private void ensureSameOwner(Budget budget, Account account) {
         if (account.getUser() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Account must be owned by a user");
+            throw new ConflictException("Account must be owned by a user");
         }
 
         if (budget == null) {
@@ -443,15 +446,11 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         if (budget.getUser() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Budget must be owned by a user");
+            throw new ConflictException("Budget must be owned by a user");
         }
 
         if (!budget.getUser().getId().equals(account.getUser().getId())) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Budget owner and account owner must match");
+            throw new ConflictException("Budget owner and account owner must match");
         }
     }
 
@@ -459,5 +458,18 @@ public class TransactionServiceImpl implements TransactionService {
         return transactions.stream()
                 .map(transaction -> transactionMapper.toResponse(transaction, true, true))
                 .toList();
+    }
+
+    private Transaction getTransaction(Long id) {
+        return transactionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(TRANSACTION_NOT_FOUND_MESSAGE_PREFIX + id));
+    }
+
+    private String normalizeDescription(String value) {
+        String normalized = value == null ? null : value.trim();
+        if (normalized == null || normalized.isBlank()) {
+            throw new BadRequestException("Description must not be blank");
+        }
+        return normalized;
     }
 }

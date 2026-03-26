@@ -2,6 +2,7 @@ package com.finance.tracker.dto.request;
 
 import com.finance.tracker.domain.AccountType;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 
 import jakarta.validation.constraints.DecimalMin;
@@ -18,6 +19,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Request body for account creation or full update")
 public class AccountRequest {
 
     @NotBlank

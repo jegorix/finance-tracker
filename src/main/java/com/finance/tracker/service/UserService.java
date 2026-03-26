@@ -1,6 +1,7 @@
 package com.finance.tracker.service;
 
 import com.finance.tracker.dto.request.UserRequest;
+import com.finance.tracker.dto.request.UserUpdateRequest;
 import com.finance.tracker.dto.request.UserWithAccountsAndBudgetsCreateRequest;
 import com.finance.tracker.dto.response.UserResponse;
 
@@ -13,7 +14,7 @@ public interface UserService {
 
     UserResponse create(UserRequest request);
 
-    UserResponse update(Long id, UserRequest user);
+    UserResponse update(Long id, UserUpdateRequest user);
 
     void delete(Long id);
 

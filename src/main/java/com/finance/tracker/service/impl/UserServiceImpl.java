@@ -6,8 +6,13 @@ import com.finance.tracker.domain.User;
 import com.finance.tracker.dto.request.AccountRequest;
 import com.finance.tracker.dto.request.BudgetRequest;
 import com.finance.tracker.dto.request.UserRequest;
+import com.finance.tracker.dto.request.UserUpdateRequest;
 import com.finance.tracker.dto.request.UserWithAccountsAndBudgetsCreateRequest;
 import com.finance.tracker.dto.response.UserResponse;
+import com.finance.tracker.exception.BadRequestException;
+import com.finance.tracker.exception.DuplicateResourceException;
+import com.finance.tracker.exception.LoggingException;
+import com.finance.tracker.exception.ResourceNotFoundException;
 import com.finance.tracker.mapper.AccountMapper;
 import com.finance.tracker.mapper.UserMapper;
 import com.finance.tracker.repository.AccountRepository;
@@ -16,11 +21,9 @@ import com.finance.tracker.repository.UserRepository;
 import com.finance.tracker.service.UserService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional(readOnly = true)
@@ -35,9 +38,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse findById(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found " + id));
-        return userMapper.toResponse(user);
+        return userMapper.toResponse(getUser(id));
     }
 
     @Override
@@ -48,20 +49,29 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse create(UserRequest request) {
+        String username = normalizeUsername(request.getUsername());
+        String email = normalizeEmail(request.getEmail(), true);
+        ensureUniqueCredentials(username, email, null);
+
         User user = userMapper.fromRequest(request);
-        user.setUsername(request.getUsername().trim());
+        user.setUsername(username);
+        user.setEmail(email);
         User saved = userRepository.save(user);
         return userMapper.toResponse(saved);
     }
 
     @Override
     @Transactional
-    public UserResponse update(Long id, UserRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found " + id));
+    public UserResponse update(Long id, UserUpdateRequest request) {
+        User user = getUser(id);
+        String username = normalizeUsername(request.getUsername());
+        String email = normalizeEmail(request.getEmail(), false);
+        ensureUniqueCredentials(username, email, user.getId());
 
-        user.setUsername(request.getUsername().trim());
-        user.setEmail(request.getEmail());
+        user.setUsername(username);
+        if (email != null) {
+            user.setEmail(email);
+        }
 
         User saved = userRepository.save(user);
         return userMapper.toResponse(saved);
@@ -71,7 +81,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void delete(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found " + id);
+            throw new ResourceNotFoundException("User not found " + id);
         }
         userRepository.deleteById(id);
     }
@@ -89,9 +99,13 @@ public class UserServiceImpl implements UserService {
     }
 
     private UserResponse createWithAccountsAndBudgetsInternal(UserWithAccountsAndBudgetsCreateRequest request) {
+        String username = normalizeUsername(request.getUsername());
+        String email = normalizeEmail(request.getEmail(), true);
+        ensureUniqueCredentials(username, email, null);
+
         User user = new User();
-        user.setUsername(request.getUsername().trim());
-        user.setEmail(request.getEmail());
+        user.setUsername(username);
+        user.setEmail(email);
         User savedUser = userRepository.save(user);
 
         for (AccountRequest accountRequest : request.getAccounts()) {
@@ -103,9 +117,7 @@ public class UserServiceImpl implements UserService {
         }
 
         if (request.isFailAfterAccounts()) {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Forced error right after all accounts were saved");
+            throw new LoggingException("Forced error right after all accounts were saved");
         }
 
         createBudgetsForRequest(savedUser, request.getBudgets());
@@ -130,5 +142,53 @@ public class UserServiceImpl implements UserService {
         return users.stream()
                 .map(userMapper::toResponse)
                 .toList();
+    }
+
+    private User getUser(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found " + id));
+    }
+
+    private void ensureUniqueCredentials(String username, String email, Long currentUserId) {
+        boolean usernameExists = currentUserId == null
+                ? userRepository.existsByUsernameIgnoreCase(username)
+                : userRepository.existsByUsernameIgnoreCaseAndIdNot(username, currentUserId);
+        if (usernameExists) {
+            throw new DuplicateResourceException("User with username '" + username + "' already exists");
+        }
+
+        if (email == null) {
+            return;
+        }
+
+        boolean emailExists = currentUserId == null
+                ? userRepository.existsByEmailIgnoreCase(email)
+                : userRepository.existsByEmailIgnoreCaseAndIdNot(email, currentUserId);
+        if (emailExists) {
+            throw new DuplicateResourceException("User with email '" + email + "' already exists");
+        }
+    }
+
+    private String normalizeUsername(String username) {
+        String normalized = username == null ? null : username.trim();
+        if (normalized == null || normalized.isBlank()) {
+            throw new BadRequestException("Username must not be blank");
+        }
+        return normalized;
+    }
+
+    private String normalizeEmail(String email, boolean required) {
+        if (email == null) {
+            if (required) {
+                throw new BadRequestException("Email must not be blank");
+            }
+            return null;
+        }
+
+        String normalized = email.trim();
+        if (normalized.isBlank()) {
+            throw new BadRequestException("Email must not be blank");
+        }
+        return normalized;
     }
 }

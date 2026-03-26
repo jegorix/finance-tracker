@@ -1,6 +1,7 @@
 package com.finance.tracker.service;
 
 import com.finance.tracker.dto.request.AccountRequest;
+import com.finance.tracker.dto.request.AccountUpdateRequest;
 import com.finance.tracker.dto.request.TransferDemoRequest;
 import com.finance.tracker.dto.response.AccountResponse;
 import com.finance.tracker.dto.response.TransferDemoResponse;
@@ -14,7 +15,7 @@ public interface AccountService {
 
     AccountResponse create(AccountRequest request);
 
-    AccountResponse update(Long id, AccountRequest request);
+    AccountResponse update(Long id, AccountUpdateRequest request);
 
     TransferDemoResponse transferTx(TransferDemoRequest request);
 

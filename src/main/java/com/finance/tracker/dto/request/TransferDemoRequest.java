@@ -1,5 +1,6 @@
 package com.finance.tracker.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 
 import jakarta.validation.constraints.DecimalMin;
@@ -14,6 +15,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Request body for transfer demo used to show transaction behavior")
 public class TransferDemoRequest {
 
     @NotNull

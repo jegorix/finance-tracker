@@ -1,5 +1,6 @@
 package com.finance.tracker.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 import jakarta.validation.constraints.NotBlank;
@@ -15,6 +16,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Request body for category creation or full update")
 public class CategoryRequest {
 
     @NotBlank

@@ -1,0 +1,396 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+body{font-family:Helvetica,Arial,sans-serif;line-height:1.45;color:#111;margin:32px;}
+h1,h2,h3,h4{margin:1.1em 0 0.45em;}
+p{margin:0.45em 0;}
+pre{background:#f5f5f5;border:1px solid #ddd;padding:10px;white-space:pre-wrap;font-family:Menlo,Consolas,monospace;font-size:11px;}
+code{font-family:Menlo,Consolas,monospace;background:#f5f5f5;padding:1px 3px;}
+ul,ol{margin:0.35em 0 0.75em 1.4em;}
+li{margin:0.2em 0;}
+hr{border:none;border-top:1px solid #ccc;margin:1.2em 0;}
+</style></head><body>
+<h1>ОТЧЕТ О ЛАБОРАТОРНОЙ РАБОТЕ № 4</h1>
+<h2>Error logging/handling</h2>
+<p>по дисциплине «Программирование на языках высокого уровня»</p>
+<p>Ниже приведён исправленный вариант отчёта, адаптированный под текущий проект <code>Finance Tracker</code>. Шаблон из <code>EXAMPLE/lab4-nowicki.docx</code> был ориентирован на другой проект, поэтому в нём заменены:</p>
+<ul>
+<li>структура проекта;</li>
+<li>имена контроллеров, DTO и пакетов;</li>
+<li>листинги кода;</li>
+<li>описание демонстрации.</li>
+</ul>
+<p>Общие части, такие как постановка задачи и заключение, сохранены по смыслу.</p>
+<hr>
+<h2>1 ПОСТАНОВКА ЗАДАЧИ</h2>
+<ol>
+<li>Реализовать глобальную обработку ошибок через <code>@ControllerAdvice</code>.</li>
+<li>Добавить валидацию входных данных через <code>@Valid</code>.</li>
+<li>Реализовать единый формат ошибки для всех endpoint.</li>
+<li>Настроить логирование через <code>logback</code>:</li>
+</ol>
+<ul>
+<li>уровни логирования;</li>
+<li>ротация логов.</li>
+</ul>
+<ol>
+<li>Реализовать аспект (AOP) для логирования времени выполнения сервисных методов.</li>
+<li>Подключить Swagger/OpenAPI с описанием endpoint и DTO.</li>
+</ol>
+<hr>
+<h2>2 СТРУКТУРА ПРОЕКТА</h2>
+<p>Актуальная структура проекта с учётом лабораторной работы 4:</p>
+<pre>
+finance-tracker
+├── pom.xml
+├── src
+│   ├── main
+│   │   ├── java
+│   │   │   └── com/finance/tracker
+│   │   │       ├── FinanceTrackerApplication.java
+│   │   │       ├── aop
+│   │   │       │   └── ServiceLoggingAspect.java
+│   │   │       ├── cache
+│   │   │       │   ├── TransactionSearchCacheKey.java
+│   │   │       │   ├── TransactionSearchIndex.java
+│   │   │       │   └── TransactionSearchIndexInvalidator.java
+│   │   │       ├── config
+│   │   │       │   └── OpenApiConfig.java
+│   │   │       ├── controller
+│   │   │       │   ├── AccountController.java
+│   │   │       │   ├── BudgetController.java
+│   │   │       │   ├── CategoryController.java
+│   │   │       │   ├── TransactionController.java
+│   │   │       │   ├── UserController.java
+│   │   │       │   └── api
+│   │   │       │       ├── AccountControllerApi.java
+│   │   │       │       ├── BudgetControllerApi.java
+│   │   │       │       ├── CategoryControllerApi.java
+│   │   │       │       ├── TransactionControllerApi.java
+│   │   │       │       └── UserControllerApi.java
+│   │   │       ├── domain
+│   │   │       │   ├── Account.java
+│   │   │       │   ├── AccountType.java
+│   │   │       │   ├── Budget.java
+│   │   │       │   ├── Category.java
+│   │   │       │   ├── Transaction.java
+│   │   │       │   ├── TransactionType.java
+│   │   │       │   └── User.java
+│   │   │       ├── dto
+│   │   │       │   ├── request
+│   │   │       │   │   ├── AccountRequest.java
+│   │   │       │   │   ├── AccountUpdateRequest.java
+│   │   │       │   │   ├── BudgetRequest.java
+│   │   │       │   │   ├── BudgetUpdateRequest.java
+│   │   │       │   │   ├── CategoryRequest.java
+│   │   │       │   │   ├── CategoryUpdateRequest.java
+│   │   │       │   │   ├── TransactionRequest.java
+│   │   │       │   │   ├── TransactionSearchQueryMode.java
+│   │   │       │   │   ├── TransactionSearchRequest.java
+│   │   │       │   │   ├── TransactionUpdateRequest.java
+│   │   │       │   │   ├── TransferDemoRequest.java
+│   │   │       │   │   ├── UserRequest.java
+│   │   │       │   │   ├── UserUpdateRequest.java
+│   │   │       │   │   └── UserWithAccountsAndBudgetsCreateRequest.java
+│   │   │       │   └── response
+│   │   │       │       ├── AccountResponse.java
+│   │   │       │       ├── BudgetResponse.java
+│   │   │       │       ├── CategoryResponse.java
+│   │   │       │       ├── PageMetadataResponse.java
+│   │   │       │       ├── TransactionResponse.java
+│   │   │       │       ├── TransactionSearchPageResponse.java
+│   │   │       │       ├── TransactionSearchResult.java
+│   │   │       │       ├── TransactionSearchSource.java
+│   │   │       │       ├── TransferDemoResponse.java
+│   │   │       │       └── UserResponse.java
+│   │   │       ├── exception
+│   │   │       │   ├── ApiException.java
+│   │   │       │   ├── ApiErrorField.java
+│   │   │       │   ├── ApiErrorResponse.java
+│   │   │       │   ├── BadRequestException.java
+│   │   │       │   ├── ConflictException.java
+│   │   │       │   ├── DuplicateResourceException.java
+│   │   │       │   ├── GlobalExceptionHandler.java
+│   │   │       │   ├── LoggingException.java
+│   │   │       │   └── ResourceNotFoundException.java
+│   │   │       ├── mapper
+│   │   │       │   ├── AccountMapper.java
+│   │   │       │   ├── BudgetMapper.java
+│   │   │       │   ├── CategoryMapper.java
+│   │   │       │   ├── TransactionMapper.java
+│   │   │       │   └── UserMapper.java
+│   │   │       ├── repository
+│   │   │       │   ├── AccountRepository.java
+│   │   │       │   ├── BudgetRepository.java
+│   │   │       │   ├── CategoryRepository.java
+│   │   │       │   ├── TransactionRepository.java
+│   │   │       │   └── UserRepository.java
+│   │   │       └── service
+│   │   │           ├── AccountService.java
+│   │   │           ├── BudgetService.java
+│   │   │           ├── CategoryService.java
+│   │   │           ├── TransactionService.java
+│   │   │           ├── UserService.java
+│   │   │           └── impl
+│   │   │               ├── AccountServiceImpl.java
+│   │   │               ├── BudgetServiceImpl.java
+│   │   │               ├── CategoryServiceImpl.java
+│   │   │               ├── TransactionServiceImpl.java
+│   │   │               └── UserServiceImpl.java
+│   │   └── resources
+│   │       ├── application.properties
+│   │       ├── logback-spring.xml
+│   │       └── db
+│   │           ├── db.changelog-master.yaml
+│   │           └── migrations
+│   │               ├── 001-create-users.yaml
+│   │               ├── 002-create-budgets.yaml
+│   │               ├── 003-create-categories.yaml
+│   │               ├── 004-create-account-type.yaml
+│   │               ├── 005-create-accounts.yaml
+│   │               ├── 006-create-transaction-type.yaml
+│   │               ├── 007-create-transactions.yaml
+│   │               ├── 008-create-budget-category.yaml
+│   │               ├── 009-drop-user-id-from-transactions.yaml
+│   │               ├── 010-fix-budgets-limit-amount-type.yaml
+│   │               ├── 011-fix-money-column-types.yaml
+│   │               ├── 013-restore-budget-transaction-delete-restrict.yaml
+│   │               └── 014-set-null-transaction-budget-on-budget-delete.yaml
+└── README.md
+</pre>
+<p>В отличие от шаблона из <code>EXAMPLE</code>, в текущем проекте используются <code>CategoryController</code> и <code>Category DTO</code>, а не <code>TagController</code>.</p>
+<hr>
+<h2>3 ЛИСТИНГ КОДА</h2>
+<h3>3.1 Глобальная обработка ошибок</h3>
+<p>Файл <code>GlobalExceptionHandler.java</code></p>
+<pre>
+@Slf4j
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity&lt;ApiErrorResponse&gt; handleMethodArgumentNotValid(...) { ... }
+
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity&lt;ApiErrorResponse&gt; handleBindException(...) { ... }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity&lt;ApiErrorResponse&gt; handleConstraintViolationException(...) { ... }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity&lt;ApiErrorResponse&gt; handleResponseStatusException(...) { ... }
+}
+</pre>
+<p>Обработчик перехватывает ошибки валидации, ошибки параметров, бизнес-ошибки и неожиданные исключения, после чего формирует единый JSON-ответ.</p>
+<h3>3.2 Единый формат ошибки</h3>
+<p>Файл <code>ApiErrorResponse.java</code></p>
+<pre>
+@Getter
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
+public class ApiErrorResponse {
+    private final OffsetDateTime timestamp;
+    private final int status;
+    private final String error;
+    private final String code;
+    private final String message;
+    private final String path;
+    private final List&lt;ApiErrorField&gt; fieldErrors;
+}
+</pre>
+<p>Файл <code>ApiErrorField.java</code></p>
+<pre>
+@Getter
+@AllArgsConstructor
+public class ApiErrorField {
+    private final String field;
+    private final String message;
+    private final String rejectedValue;
+}
+</pre>
+<h3>3.3 Валидация query-параметров поиска</h3>
+<p>Файл <code>TransactionSearchRequest.java</code></p>
+<pre>
+@Getter
+@Setter
+@NoArgsConstructor
+@Schema(description = &quot;Query parameters for transaction search with pagination and sorting&quot;)
+public class TransactionSearchRequest {
+
+    @Size(max = 50)
+    private String budgetName;
+
+    @Size(max = 50)
+    private String accountName;
+
+    @DecimalMin(value = &quot;0.00&quot;)
+    private BigDecimal minAmount;
+
+    @NotNull
+    @PositiveOrZero
+    private Integer page = 0;
+
+    @NotNull
+    @Positive
+    private Integer size = 5;
+}
+</pre>
+<p>Использование в контроллере:</p>
+<pre>
+@GetMapping(&quot;/search&quot;)
+public ResponseEntity&lt;TransactionSearchPageResponse&gt; search(
+        @Valid @ModelAttribute TransactionSearchRequest request) {
+    ...
+}
+</pre>
+<h3>3.4 Аспект для времени выполнения</h3>
+<p>Файл <code>ServiceLoggingAspect.java</code></p>
+<pre>
+@Aspect
+@Component
+@Slf4j
+public class ServiceLoggingAspect {
+
+    @Around(&quot;within(com.finance.tracker.service.impl..*)&quot;)
+    public Object logExecutionTime(ProceedingJoinPoint joinPoint) throws Throwable {
+        long startTime = System.nanoTime();
+        String method = joinPoint.getSignature().toShortString();
+        ...
+    }
+}
+</pre>
+<p>Аспект логирует время выполнения методов сервисного слоя и отдельно фиксирует неуспешные вызовы.</p>
+<h3>3.5 Конфигурация <code>logback</code></h3>
+<p>Файл <code>logback-spring.xml</code></p>
+<pre>
+&lt;appender name=&quot;APPLICATION_FILE&quot; class=&quot;ch.qos.logback.core.rolling.RollingFileAppender&quot;&gt;
+    &lt;file&gt;${LOG_DIR}/application.log&lt;/file&gt;
+    &lt;rollingPolicy class=&quot;ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy&quot;&gt;
+        &lt;fileNamePattern&gt;${LOG_DIR}/archive/application.%d{yyyy-MM-dd}.%i.log.gz&lt;/fileNamePattern&gt;
+        &lt;maxFileSize&gt;10MB&lt;/maxFileSize&gt;
+        &lt;maxHistory&gt;14&lt;/maxHistory&gt;
+        &lt;totalSizeCap&gt;1GB&lt;/totalSizeCap&gt;
+    &lt;/rollingPolicy&gt;
+&lt;/appender&gt;
+</pre>
+<p>Отдельно настроен <code>ERROR_FILE</code> и уровни логирования.</p>
+<h3>3.6 Swagger/OpenAPI</h3>
+<p>Файл <code>OpenApiConfig.java</code></p>
+<pre>
+@Configuration
+public class OpenApiConfig {
+
+    @Bean
+    public OpenAPI financeTrackerOpenApi() {
+        return new OpenAPI()
+                .info(new Info()
+                        .title(&quot;Finance Tracker API&quot;)
+                        .version(&quot;v1&quot;));
+    }
+}
+</pre>
+<p>Swagger-описания endpoint вынесены в интерфейсы <code>controller/api/*ControllerApi.java</code>, где используются <code>@Tag</code> и <code>@Operation</code>, а DTO описаны через <code>@Schema</code>.</p>
+<hr>
+<h2>4 ДЕМОНСТРАЦИЯ РАБОТЫ</h2>
+<h3>4.1 Подготовка</h3>
+<ol>
+<li>Запустить PostgreSQL.</li>
+<li>Запустить приложение:</li>
+</ol>
+<pre>
+./mvnw spring-boot:run
+</pre>
+<ol>
+<li>Открыть:</li>
+</ol>
+<ul>
+<li>Postman;</li>
+<li>браузер со Swagger UI;</li>
+<li>терминал с <code>tail -f logs/application.log</code>;</li>
+<li>терминал с <code>tail -f logs/error.log</code>.</li>
+</ul>
+<h3>4.2 Демонстрация валидации и единого формата ошибки</h3>
+<h4>Пример 400</h4>
+<p>Запрос:</p>
+<ul>
+<li><code>POST /api/v1/users</code></li>
+</ul>
+<pre>
+{
+  &quot;username&quot;: &quot;&quot;,
+  &quot;email&quot;: &quot;wrong-email&quot;
+}
+</pre>
+<p>Результат:</p>
+<ul>
+<li><code>400 Bad Request</code></li>
+<li>JSON формата <code>ApiErrorResponse</code></li>
+<li>массив <code>fieldErrors</code></li>
+</ul>
+<h4>Пример 404</h4>
+<p>Запрос:</p>
+<ul>
+<li><code>GET /api/v1/users/999999</code></li>
+</ul>
+<p>Результат:</p>
+<ul>
+<li><code>404 Not Found</code></li>
+<li>та же структура JSON</li>
+</ul>
+<h3>4.3 Демонстрация Swagger/OpenAPI</h3>
+<p>Открыть:</p>
+<ul>
+<li><code>http://localhost:8080/swagger-ui.html</code></li>
+</ul>
+<p>Показать:</p>
+<ul>
+<li>группы endpoint;</li>
+<li>описание DTO;</li>
+<li>схему <code>TransactionSearchRequest</code>;</li>
+<li>схему <code>ApiErrorResponse</code>.</li>
+</ul>
+<h3>4.4 Демонстрация логирования и AOP</h3>
+<p>Сначала создать пользователя и два счёта, затем выполнить запрос:</p>
+<ul>
+<li><code>GET /api/v1/users/{id}</code></li>
+</ul>
+<p>В <code>application.log</code> показать строку вида:</p>
+<pre>
+Service method UserServiceImpl.findById(..) completed in ... ms
+</pre>
+<p>Затем отправить:</p>
+<ul>
+<li><code>POST /api/v1/accounts/transfer?transactional=true</code></li>
+</ul>
+<pre>
+{
+  &quot;fromAccountId&quot;: 1,
+  &quot;toAccountId&quot;: 2,
+  &quot;amount&quot;: 50.00,
+  &quot;failAfterDebit&quot;: true
+}
+</pre>
+<p>Показать:</p>
+<ul>
+<li>ошибку <code>500</code> в Postman;</li>
+<li>запись в <code>error.log</code>;</li>
+<li>запись аспекта о неуспешном вызове.</li>
+</ul>
+<h3>4.5 Демонстрация ротации</h3>
+<p>Показать файл <code>logback-spring.xml</code> и параметры:</p>
+<ul>
+<li><code>SizeAndTimeBasedRollingPolicy</code></li>
+<li><code>maxFileSize</code></li>
+<li><code>maxHistory</code></li>
+<li><code>totalSizeCap</code></li>
+</ul>
+<p>Также показать папку:</p>
+<ul>
+<li><code>logs/archive</code></li>
+</ul>
+<p>Если нужна живая демонстрация, временно уменьшить <code>maxFileSize</code> и выполнить серию запросов.</p>
+<hr>
+<h2>5 ЗАКЛЮЧЕНИЕ</h2>
+<p>В ходе лабораторной работы реализована глобальная обработка ошибок через <code>@ControllerAdvice</code>, добавлена валидация входных данных с помощью <code>@Valid</code> и <code>@Validated</code>, введён единый формат <code>error-response</code> для всех endpoint. Настроено логирование через <code>logback</code>, включая уровни логирования и ротацию логов. Также реализован AOP-аспект для логирования времени выполнения сервисных методов и подключён Swagger/OpenAPI для документирования endpoint и DTO.</p>
+<p>Исправленный вариант отчёта приведён в соответствии с текущим проектом <code>Finance Tracker</code>, поэтому структура проекта, листинги кода и сценарии демонстрации теперь соответствуют реальному состоянию приложения.</p>
+</body></html>

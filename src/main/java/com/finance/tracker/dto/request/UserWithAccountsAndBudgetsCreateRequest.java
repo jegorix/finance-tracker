@@ -1,5 +1,6 @@
 package com.finance.tracker.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 import jakarta.validation.Valid;
@@ -16,6 +17,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Schema(description = "Request body for transactional demo of user, accounts and budgets creation")
 public class UserWithAccountsAndBudgetsCreateRequest {
 
     @NotBlank

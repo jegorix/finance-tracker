@@ -1,14 +1,13 @@
 package com.finance.tracker.dto.request;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
 import com.finance.tracker.domain.TransactionType;
-
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,7 +17,8 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class TransactionPatchRequest {
+@Schema(description = "Request body for partially updating a transaction")
+public class TransactionUpdateRequest {
 
     @PastOrPresent
     private LocalDateTime occurredAt;
@@ -26,7 +26,7 @@ public class TransactionPatchRequest {
     @DecimalMin(value = "0.01")
     private BigDecimal amount;
 
-    @Size(max = 255)
+    @Size(min = 3, max = 255)
     private String description;
 
     private TransactionType type;

@@ -1,12 +1,11 @@
 package com.finance.tracker.dto.request;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-
+import com.finance.tracker.domain.AccountType;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,20 +15,17 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class BudgetPatchRequest {
+@Schema(description = "Request body for updating an account")
+public class AccountUpdateRequest {
 
-    @Size(max = 50)
+    @Size(min = 3, max = 50)
     private String name;
 
+    private AccountType type;
+
     @DecimalMin(value = "0.00")
-    private BigDecimal limitAmount;
-
-    private LocalDate periodStart;
-
-    private LocalDate periodEnd;
+    private BigDecimal balance;
 
     @Positive
     private Long userId;
-
-    private List<@Positive Long> categoryIds;
 }

@@ -4,9 +4,14 @@ import com.finance.tracker.cache.TransactionSearchIndexInvalidator;
 import com.finance.tracker.domain.Account;
 import com.finance.tracker.domain.User;
 import com.finance.tracker.dto.request.AccountRequest;
+import com.finance.tracker.dto.request.AccountUpdateRequest;
 import com.finance.tracker.dto.request.TransferDemoRequest;
 import com.finance.tracker.dto.response.AccountResponse;
 import com.finance.tracker.dto.response.TransferDemoResponse;
+import com.finance.tracker.exception.BadRequestException;
+import com.finance.tracker.exception.DuplicateResourceException;
+import com.finance.tracker.exception.LoggingException;
+import com.finance.tracker.exception.ResourceNotFoundException;
 import com.finance.tracker.mapper.AccountMapper;
 import com.finance.tracker.repository.AccountRepository;
 import com.finance.tracker.repository.UserRepository;
@@ -17,11 +22,9 @@ import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional(readOnly = true)
@@ -35,9 +38,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public AccountResponse findById(Long id) {
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found " + id));
-        return accountMapper.toResponse(account);
+        return accountMapper.toResponse(getAccount(id));
     }
 
     @Override
@@ -49,8 +50,10 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public AccountResponse create(AccountRequest request) {
         User user = getUser(request.getUserId());
+        String normalizedName = normalizeName(request.getName(), "Account name must not be blank");
+        ensureUniqueAccountName(normalizedName, user.getId(), null);
         Account account = accountMapper.fromRequest(request);
-        account.setName(request.getName().trim());
+        account.setName(normalizedName);
         account.setUser(user);
 
         Account saved = accountRepository.save(account);
@@ -60,15 +63,26 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    public AccountResponse update(Long id, AccountRequest request) {
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found " + id));
-        User user = getUser(request.getUserId());
+    public AccountResponse update(Long id, AccountUpdateRequest request) {
+        Account account = getAccount(id);
+        User user = request.getUserId() != null ? getUser(request.getUserId()) : account.getUser();
+        String normalizedName = request.getName() != null
+                ? normalizeName(request.getName(), "Account name must not be blank")
+                : account.getName();
+        ensureUniqueAccountName(normalizedName, user.getId(), account.getId());
 
-        account.setName(request.getName().trim());
-        account.setType(request.getType());
-        account.setBalance(request.getBalance());
-        account.setUser(user);
+        if (request.getName() != null) {
+            account.setName(normalizedName);
+        }
+        if (request.getType() != null) {
+            account.setType(request.getType());
+        }
+        if (request.getBalance() != null) {
+            account.setBalance(request.getBalance());
+        }
+        if (request.getUserId() != null) {
+            account.setUser(user);
+        }
 
         Account saved = accountRepository.save(account);
         transactionSearchIndexInvalidator.invalidateAfterCommitOrNow();
@@ -91,7 +105,7 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public void delete(Long id) {
         if (!accountRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found " + id);
+            throw new ResourceNotFoundException("Account not found " + id);
         }
         accountRepository.deleteById(id);
         transactionSearchIndexInvalidator.invalidateAfterCommitOrNow();
@@ -99,9 +113,7 @@ public class AccountServiceImpl implements AccountService {
 
     private TransferDemoResponse transferInternal(TransferDemoRequest request) {
         if (request.getFromAccountId().equals(request.getToAccountId())) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Transfer requires two different accounts");
+            throw new BadRequestException("Transfer requires two different accounts");
         }
 
         Account fromAccount = getAccount(request.getFromAccountId());
@@ -109,18 +121,14 @@ public class AccountServiceImpl implements AccountService {
         BigDecimal amount = request.getAmount();
 
         if (fromAccount.getBalance().compareTo(amount) < 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Insufficient funds on source account");
+            throw new BadRequestException("Insufficient funds on source account");
         }
 
         fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
         Account savedFromAccount = accountRepository.save(fromAccount);
 
         if (request.isFailAfterDebit()) {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Forced error right after money was debited from the source account");
+            throw new LoggingException("Forced error right after money was debited from the source account");
         }
 
         toAccount.setBalance(toAccount.getBalance().add(amount));
@@ -137,12 +145,29 @@ public class AccountServiceImpl implements AccountService {
 
     private User getUser(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found " + userId));
     }
 
     private Account getAccount(Long accountId) {
         return accountRepository.findById(accountId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found " + accountId));
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found " + accountId));
+    }
+
+    private void ensureUniqueAccountName(String name, Long userId, Long currentAccountId) {
+        boolean exists = currentAccountId == null
+                ? accountRepository.existsByNameIgnoreCaseAndUserId(name, userId)
+                : accountRepository.existsByNameIgnoreCaseAndUserIdAndIdNot(name, userId, currentAccountId);
+        if (exists) {
+            throw new DuplicateResourceException("Account with name '" + name + "' already exists for user " + userId);
+        }
+    }
+
+    private String normalizeName(String value, String blankMessage) {
+        String normalized = value == null ? null : value.trim();
+        if (normalized == null || normalized.isBlank()) {
+            throw new BadRequestException(blankMessage);
+        }
+        return normalized;
     }
 
     private List<AccountResponse> toResponses(List<Account> accounts) {
