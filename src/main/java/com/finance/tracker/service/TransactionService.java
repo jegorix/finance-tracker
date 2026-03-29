@@ -1,7 +1,6 @@
 package com.finance.tracker.service;
 
-import java.math.BigDecimal;
-import com.finance.tracker.dto.request.TransactionSearchQueryMode;
+import com.finance.tracker.dto.request.TransactionSearchCriteria;
 import com.finance.tracker.dto.request.TransactionRequest;
 import com.finance.tracker.dto.request.TransactionUpdateRequest;
 import com.finance.tracker.dto.response.TransactionResponse;
@@ -20,15 +19,7 @@ public interface TransactionService {
 
     List<TransactionResponse> findByDateRange(LocalDateTime startDateTime, LocalDateTime endDateTime);
 
-    TransactionSearchResult search(
-            TransactionSearchQueryMode queryMode,
-            String budgetName,
-            String accountName,
-            BigDecimal minAmount,
-            BigDecimal maxAmount,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime,
-            Pageable pageable);
+    TransactionSearchResult search(TransactionSearchCriteria criteria, Pageable pageable);
 
     TransactionResponse create(TransactionRequest request);
 

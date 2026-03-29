@@ -1,8 +1,10 @@
 package com.finance.tracker.exception;
 
-public class DuplicateResourceException extends ConflictException {
+import org.springframework.http.HttpStatus;
+
+public class DuplicateResourceException extends ApiException {
 
     public DuplicateResourceException(String message) {
-        super(message);
+        super(HttpStatus.CONFLICT, message);
     }
 }

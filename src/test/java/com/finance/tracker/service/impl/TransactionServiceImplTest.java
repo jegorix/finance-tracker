@@ -101,12 +101,17 @@ class TransactionServiceImplTest {
 
     @Test
     void createBulkTxShouldRejectEmptyRequest() {
+        List<TransactionRequest> emptyRequests = List.of();
         BadRequestException exception = assertThrows(
                 BadRequestException.class,
-                () -> service.createBulkTx(List.of()));
+                () -> service.createBulkTx(emptyRequests));
 
         assertTrue(exception.getMessage().contains("at least one item"));
-        verifyNoInteractions(transactionRepository, budgetRepository, accountRepository, transactionSearchIndexInvalidator);
+        verifyNoInteractions(
+                transactionRepository,
+                budgetRepository,
+                accountRepository,
+                transactionSearchIndexInvalidator);
     }
 
     @Test

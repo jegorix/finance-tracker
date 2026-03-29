@@ -12,6 +12,9 @@ import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 
 @Getter
@@ -65,4 +68,24 @@ public class TransactionSearchRequest {
 
     @Schema(description = "Sort direction flag", example = "false")
     private boolean ascending;
+
+    public TransactionSearchCriteria toCriteria() {
+        return new TransactionSearchCriteria(
+                queryMode,
+                budgetName,
+                accountName,
+                minAmount,
+                maxAmount,
+                startDateTime,
+                endDateTime);
+    }
+
+    public Pageable toPageable() {
+        return PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        ascending ? Sort.Direction.ASC : Sort.Direction.DESC,
+                        sortBy.trim()));
+    }
 }

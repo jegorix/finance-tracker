@@ -14,8 +14,6 @@ import lombok.RequiredArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -64,21 +62,7 @@ public class TransactionController implements TransactionControllerApi {
     @Override
     public ResponseEntity<TransactionSearchPageResponse> search(
             @ModelAttribute TransactionSearchRequest request) {
-        PageRequest pageable = PageRequest.of(
-                request.getPage(),
-                request.getSize(),
-                Sort.by(
-                        request.isAscending() ? Sort.Direction.ASC : Sort.Direction.DESC,
-                        request.getSortBy().trim()));
-        TransactionSearchResult result = transactionService.search(
-                request.getQueryMode(),
-                request.getBudgetName(),
-                request.getAccountName(),
-                request.getMinAmount(),
-                request.getMaxAmount(),
-                request.getStartDateTime(),
-                request.getEndDateTime(),
-                pageable);
+        TransactionSearchResult result = transactionService.search(request.toCriteria(), request.toPageable());
         return ResponseEntity.ok()
                 .header("X-Transaction-Search-Source", result.getSource().name())
                 .body(TransactionSearchPageResponse.from(result.getPage()));

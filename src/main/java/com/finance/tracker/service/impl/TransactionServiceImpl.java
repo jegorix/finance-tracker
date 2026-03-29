@@ -7,6 +7,7 @@ import com.finance.tracker.domain.Transaction;
 import com.finance.tracker.cache.TransactionSearchCacheKey;
 import com.finance.tracker.cache.TransactionSearchIndex;
 import com.finance.tracker.cache.TransactionSearchIndexInvalidator;
+import com.finance.tracker.dto.request.TransactionSearchCriteria;
 import com.finance.tracker.dto.request.TransactionSearchQueryMode;
 import com.finance.tracker.dto.request.TransactionRequest;
 import com.finance.tracker.dto.request.TransactionUpdateRequest;
@@ -51,6 +52,16 @@ public class TransactionServiceImpl implements TransactionService {
     private static final LocalDateTime SEARCH_END_DATE_TIME = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
     private static final String BULK_REQUEST_EMPTY_MESSAGE =
             "Bulk transaction request must contain at least one item";
+    private static final String SORT_FIELD_ID = "id";
+    private static final String SORT_PROPERTY_OCCURRED_AT = "occurredAt";
+    private static final String SORT_COLUMN_OCCURRED_AT = "occurred_at";
+    private static final String SORT_FIELD_AMOUNT = "amount";
+    private static final String SORT_FIELD_DESCRIPTION = "description";
+    private static final String SORT_FIELD_TYPE = "type";
+    private static final String SORT_PROPERTY_BUDGET_ID = "budgetId";
+    private static final String SORT_COLUMN_BUDGET_ID = "budget_id";
+    private static final String SORT_PROPERTY_ACCOUNT_ID = "accountId";
+    private static final String SORT_COLUMN_ACCOUNT_ID = "account_id";
 
     private final TransactionRepository transactionRepository;
     private final BudgetRepository budgetRepository;
@@ -88,68 +99,15 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public TransactionSearchResult search(
-            TransactionSearchQueryMode queryMode,
-            String budgetName,
-            String accountName,
-            BigDecimal minAmount,
-            BigDecimal maxAmount,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime,
-            Pageable pageable) {
-        validateSearchFilters(minAmount, maxAmount, startDateTime, endDateTime);
+    public TransactionSearchResult search(TransactionSearchCriteria criteria, Pageable pageable) {
+        PreparedTransactionSearch preparedSearch = prepareSearch(criteria, pageable);
 
-        TransactionSearchQueryMode normalizedQueryMode = queryMode == null
-                ? TransactionSearchQueryMode.JPQL
-                : queryMode;
-        Pageable repositoryPageable = normalizePageableForQuery(normalizedQueryMode, pageable);
-        String normalizedBudgetName = normalizeTextFilterForCache(budgetName);
-        String normalizedAccountName = normalizeTextFilterForCache(accountName);
-        String repositoryBudgetName = normalizeTextFilterForRepository(budgetName);
-        String repositoryAccountName = normalizeTextFilterForRepository(accountName);
-        BigDecimal repositoryMinAmount = minAmount == null ? SEARCH_MIN_AMOUNT : minAmount;
-        BigDecimal repositoryMaxAmount = maxAmount == null ? SEARCH_MAX_AMOUNT : maxAmount;
-        LocalDateTime repositoryStartDateTime = startDateTime == null ? SEARCH_START_DATE_TIME : startDateTime;
-        LocalDateTime repositoryEndDateTime = endDateTime == null ? SEARCH_END_DATE_TIME : endDateTime;
-
-        TransactionSearchCacheKey cacheKey = new TransactionSearchCacheKey(
-                normalizedQueryMode,
-                normalizedBudgetName,
-                normalizedAccountName,
-                minAmount,
-                maxAmount,
-                startDateTime,
-                endDateTime,
-                repositoryPageable.getPageNumber(),
-                repositoryPageable.getPageSize(),
-                repositoryPageable.getSort().toString());
-        String searchLogContext = buildSearchLogContext(
-                normalizedQueryMode,
-                normalizedBudgetName,
-                normalizedAccountName,
-                minAmount,
-                maxAmount,
-                startDateTime,
-                endDateTime,
-                repositoryPageable);
-
-        return transactionSearchIndex.find(cacheKey)
+        return transactionSearchIndex.find(preparedSearch.cacheKey())
                 .map(page -> {
-                    log.info("Transaction search cache HIT [{}]", searchLogContext);
+                    log.info("Transaction search cache HIT [{}]", preparedSearch.searchLogContext());
                     return new TransactionSearchResult(page, TransactionSearchSource.CACHE);
                 })
-                .orElseGet(() -> loadAndIndexSearchResult(
-                        cacheKey,
-                        normalizedQueryMode,
-                        repositoryBudgetName,
-                        repositoryAccountName,
-                        repositoryMinAmount,
-                        repositoryMaxAmount,
-                        repositoryStartDateTime,
-                        repositoryEndDateTime,
-                        repositoryPageable,
-                        pageable,
-                        searchLogContext));
+                .orElseGet(() -> loadAndIndexSearchResult(preparedSearch));
     }
 
     @Override
@@ -240,47 +198,98 @@ public class TransactionServiceImpl implements TransactionService {
         transactionSearchIndexInvalidator.invalidateAfterCommitOrNow();
     }
 
-    private TransactionSearchResult loadAndIndexSearchResult(
-            TransactionSearchCacheKey cacheKey,
-            TransactionSearchQueryMode queryMode,
-            String budgetName,
-            String accountName,
-            BigDecimal minAmount,
-            BigDecimal maxAmount,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime,
-            Pageable repositoryPageable,
-            Pageable responsePageable,
-            String searchLogContext) {
-        log.info("Transaction search cache MISS [{}]", searchLogContext);
-        log.info("Transaction search loading from DATABASE [{}]", searchLogContext);
-        Page<Transaction> transactions = switch (queryMode) {
+    private PreparedTransactionSearch prepareSearch(TransactionSearchCriteria criteria, Pageable pageable) {
+        TransactionSearchCriteria normalizedCriteria = normalizeCriteria(criteria);
+        validateSearchFilters(
+                normalizedCriteria.minAmount(),
+                normalizedCriteria.maxAmount(),
+                normalizedCriteria.startDateTime(),
+                normalizedCriteria.endDateTime());
+
+        Pageable repositoryPageable = normalizePageableForQuery(normalizedCriteria.queryMode(), pageable);
+        TransactionSearchCriteria cacheCriteria = normalizeCriteriaForCache(normalizedCriteria);
+        TransactionSearchCriteria repositoryCriteria = normalizeCriteriaForRepository(normalizedCriteria);
+        TransactionSearchCacheKey cacheKey = new TransactionSearchCacheKey(
+                cacheCriteria,
+                repositoryPageable.getPageNumber(),
+                repositoryPageable.getPageSize(),
+                repositoryPageable.getSort().toString());
+        String searchLogContext = buildSearchLogContext(cacheCriteria, repositoryPageable);
+        return new PreparedTransactionSearch(
+                cacheKey,
+                repositoryCriteria,
+                repositoryPageable,
+                pageable,
+                searchLogContext);
+    }
+
+    private TransactionSearchCriteria normalizeCriteria(TransactionSearchCriteria criteria) {
+        if (criteria == null) {
+            return new TransactionSearchCriteria(TransactionSearchQueryMode.JPQL, null, null, null, null, null, null);
+        }
+        return new TransactionSearchCriteria(
+                criteria.queryMode() == null ? TransactionSearchQueryMode.JPQL : criteria.queryMode(),
+                criteria.budgetName(),
+                criteria.accountName(),
+                criteria.minAmount(),
+                criteria.maxAmount(),
+                criteria.startDateTime(),
+                criteria.endDateTime());
+    }
+
+    private TransactionSearchCriteria normalizeCriteriaForCache(TransactionSearchCriteria criteria) {
+        return new TransactionSearchCriteria(
+                criteria.queryMode(),
+                normalizeTextFilterForCache(criteria.budgetName()),
+                normalizeTextFilterForCache(criteria.accountName()),
+                criteria.minAmount(),
+                criteria.maxAmount(),
+                criteria.startDateTime(),
+                criteria.endDateTime());
+    }
+
+    private TransactionSearchCriteria normalizeCriteriaForRepository(TransactionSearchCriteria criteria) {
+        return new TransactionSearchCriteria(
+                criteria.queryMode(),
+                normalizeTextFilterForRepository(criteria.budgetName()),
+                normalizeTextFilterForRepository(criteria.accountName()),
+                criteria.minAmount() == null ? SEARCH_MIN_AMOUNT : criteria.minAmount(),
+                criteria.maxAmount() == null ? SEARCH_MAX_AMOUNT : criteria.maxAmount(),
+                criteria.startDateTime() == null ? SEARCH_START_DATE_TIME : criteria.startDateTime(),
+                criteria.endDateTime() == null ? SEARCH_END_DATE_TIME : criteria.endDateTime());
+    }
+
+    private TransactionSearchResult loadAndIndexSearchResult(PreparedTransactionSearch preparedSearch) {
+        TransactionSearchCriteria repositoryCriteria = preparedSearch.repositoryCriteria();
+        log.info("Transaction search cache MISS [{}]", preparedSearch.searchLogContext());
+        log.info("Transaction search loading from DATABASE [{}]", preparedSearch.searchLogContext());
+        Page<Transaction> transactions = switch (repositoryCriteria.queryMode()) {
             case NATIVE -> transactionRepository.searchByNestedFiltersNative(
-                    budgetName,
-                    accountName,
-                    minAmount,
-                    maxAmount,
-                    startDateTime,
-                    endDateTime,
-                    repositoryPageable);
+                    repositoryCriteria.budgetName(),
+                    repositoryCriteria.accountName(),
+                    repositoryCriteria.minAmount(),
+                    repositoryCriteria.maxAmount(),
+                    repositoryCriteria.startDateTime(),
+                    repositoryCriteria.endDateTime(),
+                    preparedSearch.repositoryPageable());
             case JPQL -> transactionRepository.searchByNestedFiltersJpql(
-                    budgetName,
-                    accountName,
-                    minAmount,
-                    maxAmount,
-                    startDateTime,
-                    endDateTime,
-                    repositoryPageable);
+                    repositoryCriteria.budgetName(),
+                    repositoryCriteria.accountName(),
+                    repositoryCriteria.minAmount(),
+                    repositoryCriteria.maxAmount(),
+                    repositoryCriteria.startDateTime(),
+                    repositoryCriteria.endDateTime(),
+                    preparedSearch.repositoryPageable());
         };
 
         Page<TransactionResponse> responsePage = new PageImpl<>(
                 transactions.getContent().stream()
                         .map(transaction -> transactionMapper.toResponse(transaction, true, true))
                         .toList(),
-                responsePageable,
+                preparedSearch.responsePageable(),
                 transactions.getTotalElements());
-        transactionSearchIndex.put(cacheKey, responsePage);
-        log.info("Transaction search result cached [{}]", searchLogContext);
+        transactionSearchIndex.put(preparedSearch.cacheKey(), responsePage);
+        log.info("Transaction search result cached [{}]", preparedSearch.searchLogContext());
         return new TransactionSearchResult(responsePage, TransactionSearchSource.DATABASE);
     }
 
@@ -332,8 +341,8 @@ public class TransactionServiceImpl implements TransactionService {
 
     private Sort defaultSort(TransactionSearchQueryMode queryMode) {
         return queryMode == TransactionSearchQueryMode.NATIVE
-                ? Sort.by(Sort.Direction.DESC, "occurred_at")
-                : Sort.by(Sort.Direction.DESC, "occurredAt");
+                ? Sort.by(Sort.Direction.DESC, SORT_COLUMN_OCCURRED_AT)
+                : Sort.by(Sort.Direction.DESC, SORT_PROPERTY_OCCURRED_AT);
     }
 
     private Sort.Order normalizeSortOrder(TransactionSearchQueryMode queryMode, Sort.Order order) {
@@ -346,44 +355,36 @@ public class TransactionServiceImpl implements TransactionService {
 
     private String mapJpqlSortProperty(String property) {
         return switch (property) {
-            case "id" -> "id";
-            case "occurredAt", "occurred_at" -> "occurredAt";
-            case "amount" -> "amount";
-            case "description" -> "description";
-            case "type" -> "type";
+            case SORT_FIELD_ID -> SORT_FIELD_ID;
+            case SORT_PROPERTY_OCCURRED_AT, SORT_COLUMN_OCCURRED_AT -> SORT_PROPERTY_OCCURRED_AT;
+            case SORT_FIELD_AMOUNT -> SORT_FIELD_AMOUNT;
+            case SORT_FIELD_DESCRIPTION -> SORT_FIELD_DESCRIPTION;
+            case SORT_FIELD_TYPE -> SORT_FIELD_TYPE;
             default -> throw new BadRequestException("Unsupported sort property for JPQL query: " + property);
         };
     }
 
     private String mapNativeSortProperty(String property) {
         return switch (property) {
-            case "id" -> "id";
-            case "occurredAt", "occurred_at" -> "occurred_at";
-            case "amount" -> "amount";
-            case "description" -> "description";
-            case "type" -> "type";
-            case "budgetId", "budget_id" -> "budget_id";
-            case "accountId", "account_id" -> "account_id";
+            case SORT_FIELD_ID -> SORT_FIELD_ID;
+            case SORT_PROPERTY_OCCURRED_AT, SORT_COLUMN_OCCURRED_AT -> SORT_COLUMN_OCCURRED_AT;
+            case SORT_FIELD_AMOUNT -> SORT_FIELD_AMOUNT;
+            case SORT_FIELD_DESCRIPTION -> SORT_FIELD_DESCRIPTION;
+            case SORT_FIELD_TYPE -> SORT_FIELD_TYPE;
+            case SORT_PROPERTY_BUDGET_ID, SORT_COLUMN_BUDGET_ID -> SORT_COLUMN_BUDGET_ID;
+            case SORT_PROPERTY_ACCOUNT_ID, SORT_COLUMN_ACCOUNT_ID -> SORT_COLUMN_ACCOUNT_ID;
             default -> throw new BadRequestException("Unsupported sort property for native query: " + property);
         };
     }
 
-    private String buildSearchLogContext(
-            TransactionSearchQueryMode queryMode,
-            String budgetName,
-            String accountName,
-            BigDecimal minAmount,
-            BigDecimal maxAmount,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime,
-            Pageable pageable) {
-        return "queryMode=" + queryMode
-                + ", budgetName=" + valueOrDash(budgetName)
-                + ", accountName=" + valueOrDash(accountName)
-                + ", minAmount=" + valueOrDash(minAmount)
-                + ", maxAmount=" + valueOrDash(maxAmount)
-                + ", startDateTime=" + valueOrDash(startDateTime)
-                + ", endDateTime=" + valueOrDash(endDateTime)
+    private String buildSearchLogContext(TransactionSearchCriteria criteria, Pageable pageable) {
+        return "queryMode=" + criteria.queryMode()
+                + ", budgetName=" + valueOrDash(criteria.budgetName())
+                + ", accountName=" + valueOrDash(criteria.accountName())
+                + ", minAmount=" + valueOrDash(criteria.minAmount())
+                + ", maxAmount=" + valueOrDash(criteria.maxAmount())
+                + ", startDateTime=" + valueOrDash(criteria.startDateTime())
+                + ", endDateTime=" + valueOrDash(criteria.endDateTime())
                 + ", page=" + pageable.getPageNumber()
                 + ", size=" + pageable.getPageSize()
                 + ", sort=" + pageable.getSort();
@@ -471,5 +472,13 @@ public class TransactionServiceImpl implements TransactionService {
             throw new BadRequestException("Description must not be blank");
         }
         return normalized;
+    }
+
+    private record PreparedTransactionSearch(
+            TransactionSearchCacheKey cacheKey,
+            TransactionSearchCriteria repositoryCriteria,
+            Pageable repositoryPageable,
+            Pageable responsePageable,
+            String searchLogContext) {
     }
 }

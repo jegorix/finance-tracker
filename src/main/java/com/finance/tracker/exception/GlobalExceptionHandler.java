@@ -46,6 +46,7 @@ public class GlobalExceptionHandler {
     private static final String DATABASE_CONFLICT_CODE = "DATABASE_CONFLICT";
     private static final String METHOD_NOT_ALLOWED_CODE = "METHOD_NOT_ALLOWED";
     private static final String INTERNAL_ERROR_CODE = "INTERNAL_ERROR";
+    private static final String REQUEST_VALIDATION_FAILED_MESSAGE = "Request validation failed";
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiErrorResponse> handleApiException(
@@ -68,7 +69,7 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         return buildValidationError(
                 HttpStatus.BAD_REQUEST,
-                "Request validation failed",
+                REQUEST_VALIDATION_FAILED_MESSAGE,
                 request,
                 extractBindingErrors(exception.getBindingResult()),
                 exception);
@@ -80,7 +81,7 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         return buildValidationError(
                 HttpStatus.BAD_REQUEST,
-                "Request validation failed",
+                REQUEST_VALIDATION_FAILED_MESSAGE,
                 request,
                 extractBindingErrors(exception.getBindingResult()),
                 exception);
@@ -92,7 +93,7 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         return buildValidationError(
                 HttpStatus.BAD_REQUEST,
-                "Request validation failed",
+                REQUEST_VALIDATION_FAILED_MESSAGE,
                 request,
                 extractParameterErrors(exception),
                 exception);
@@ -108,7 +109,7 @@ public class GlobalExceptionHandler {
                 .toList();
         return buildValidationError(
                 HttpStatus.BAD_REQUEST,
-                "Request validation failed",
+                REQUEST_VALIDATION_FAILED_MESSAGE,
                 request,
                 fieldErrors,
                 exception);
@@ -220,7 +221,11 @@ public class GlobalExceptionHandler {
                 Optional.ofNullable(exception.getReason()).orElse("Request processing failed"),
                 request.getRequestURI(),
                 List.of());
-        logByStatus(statusCode, "Handled business exception at {}: {}", request.getRequestURI(), exception.getMessage());
+        logByStatus(
+                statusCode,
+                "Handled business exception at {}: {}",
+                request.getRequestURI(),
+                exception.getMessage());
         return ResponseEntity.status(statusCode).body(response);
     }
 
