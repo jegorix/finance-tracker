@@ -31,12 +31,22 @@ CREATE DATABASE finance_tracker;
 Убедитесь, что доступы совпадают с `src/main/resources/application.properties`:
 - `spring.datasource.url=jdbc:postgresql://localhost:5432/finance_tracker`
 - `spring.datasource.username=postgres`
-- `spring.datasource.password=postgres`
+- `spring.datasource.password=${DB_PASSWORD:}`
+
+Пароль берётся из переменной окружения `DB_PASSWORD`.
+
+Пример запуска:
+
+```bash
+DB_PASSWORD=postgres ./mvnw spring-boot:run
+```
+
+Если у вашего пользователя `postgres` другой пароль, подставьте его вместо `postgres`.
 
 ### 2. Запустите приложение
 
 ```bash
-./mvnw spring-boot:run
+DB_PASSWORD=postgres ./mvnw spring-boot:run
 ```
 
 Если PostgreSQL не запущен или недоступен на `localhost:5432`, приложение завершится на старте, потому что Liquibase применяет миграции при инициализации.
