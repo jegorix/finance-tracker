@@ -35,3 +35,5 @@ build/
 .env
 application-secrets.properties
 logs/
+FRONT-END/node_modules/
+FRONT-END/dist/

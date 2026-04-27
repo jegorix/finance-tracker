@@ -1,0 +1,10 @@
+.git
+.idea
+.vscode
+logs
+FRONT-END
+FinanceTracker
+TaskManager
+docs
+EXAMPLE
+**/.DS_Store

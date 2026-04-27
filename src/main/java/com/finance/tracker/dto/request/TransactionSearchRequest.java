@@ -31,6 +31,10 @@ public class TransactionSearchRequest {
     @Size(max = 50)
     private String accountName;
 
+    @Schema(description = "User id to scope the search", example = "1")
+    @Positive
+    private Long userId;
+
     @Schema(description = "Minimal transaction amount", example = "10.00")
     @DecimalMin(value = "0.00")
     private BigDecimal minAmount;
@@ -71,6 +75,7 @@ public class TransactionSearchRequest {
 
     public TransactionSearchCriteria toCriteria() {
         return new TransactionSearchCriteria(
+                userId,
                 queryMode,
                 budgetName,
                 accountName,

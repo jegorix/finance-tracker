@@ -47,8 +47,9 @@ public class AsyncTransactionExecutorService {
         }
 
         task.markInProgress();
-
+        
         try {
+            Thread.sleep(10000);
             pause(initialDelayMillis);
 
             if (transactional) {

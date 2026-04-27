@@ -21,4 +21,5 @@ public class AccountResponse {
     private String name;
     private AccountType type;
     private BigDecimal balance;
+    private Long userId;
 }

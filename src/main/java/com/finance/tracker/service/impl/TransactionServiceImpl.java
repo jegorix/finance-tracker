@@ -1,6 +1,7 @@
 package com.finance.tracker.service.impl;
 
 import java.math.BigDecimal;
+import com.finance.tracker.auth.AuthContext;
 import com.finance.tracker.domain.Account;
 import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.Transaction;
@@ -77,9 +78,17 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public List<TransactionResponse> findAll(boolean withEntityGraph) {
-        List<Transaction> transactions = withEntityGraph
-                ? transactionRepository.findAllTransactionsWithEntityGraph()
-                : transactionRepository.findAllTransactions();
+        Long currentUserId = currentUserId();
+        List<Transaction> transactions;
+        if (currentUserId == null) {
+            transactions = withEntityGraph
+                    ? transactionRepository.findAllTransactionsWithEntityGraph()
+                    : transactionRepository.findAllTransactions();
+        } else {
+            transactions = withEntityGraph
+                    ? transactionRepository.findAllTransactionsWithEntityGraph(currentUserId)
+                    : transactionRepository.findAllTransactions(currentUserId);
+        }
         return toResponses(transactions);
     }
 
@@ -94,13 +103,17 @@ public class TransactionServiceImpl implements TransactionService {
             throw new BadRequestException("endDateTime must be greater than or equal to startDateTime");
         }
 
-        List<Transaction> transactions = transactionRepository.findByOccurredAtBetween(startDateTime, endDateTime);
+        Long currentUserId = currentUserId();
+        List<Transaction> transactions = currentUserId == null
+                ? transactionRepository.findByOccurredAtBetween(startDateTime, endDateTime)
+                : transactionRepository.findByOccurredAtBetweenAndAccountUserId(startDateTime, endDateTime, currentUserId);
         return toResponses(transactions);
     }
 
     @Override
     public TransactionSearchResult search(TransactionSearchCriteria criteria, Pageable pageable) {
-        PreparedTransactionSearch preparedSearch = prepareSearch(criteria, pageable);
+        Long targetUserId = criteria != null && criteria.userId() != null ? criteria.userId() : currentUserId();
+        PreparedTransactionSearch preparedSearch = prepareSearch(criteria, pageable, targetUserId);
 
         return transactionSearchIndex.find(preparedSearch.cacheKey())
                 .map(page -> {
@@ -191,14 +204,18 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!transactionRepository.existsById(id)) {
+        Long currentUserId = currentUserId();
+        boolean exists = currentUserId == null
+                ? transactionRepository.existsById(id)
+                : transactionRepository.existsByIdAndAccountUserId(id, currentUserId);
+        if (!exists) {
             throw new ResourceNotFoundException(TRANSACTION_NOT_FOUND_MESSAGE_PREFIX + id);
         }
         transactionRepository.deleteById(id);
         transactionSearchIndexInvalidator.invalidateAfterCommitOrNow();
     }
 
-    private PreparedTransactionSearch prepareSearch(TransactionSearchCriteria criteria, Pageable pageable) {
+    private PreparedTransactionSearch prepareSearch(TransactionSearchCriteria criteria, Pageable pageable, Long userId) {
         TransactionSearchCriteria normalizedCriteria = normalizeCriteria(criteria);
         validateSearchFilters(
                 normalizedCriteria.minAmount(),
@@ -210,12 +227,14 @@ public class TransactionServiceImpl implements TransactionService {
         TransactionSearchCriteria cacheCriteria = normalizeCriteriaForCache(normalizedCriteria);
         TransactionSearchCriteria repositoryCriteria = normalizeCriteriaForRepository(normalizedCriteria);
         TransactionSearchCacheKey cacheKey = new TransactionSearchCacheKey(
+                userId,
                 cacheCriteria,
                 repositoryPageable.getPageNumber(),
                 repositoryPageable.getPageSize(),
                 repositoryPageable.getSort().toString());
         String searchLogContext = buildSearchLogContext(cacheCriteria, repositoryPageable);
         return new PreparedTransactionSearch(
+                userId,
                 cacheKey,
                 repositoryCriteria,
                 repositoryPageable,
@@ -225,9 +244,10 @@ public class TransactionServiceImpl implements TransactionService {
 
     private TransactionSearchCriteria normalizeCriteria(TransactionSearchCriteria criteria) {
         if (criteria == null) {
-            return new TransactionSearchCriteria(TransactionSearchQueryMode.JPQL, null, null, null, null, null, null);
+            return new TransactionSearchCriteria(null, TransactionSearchQueryMode.JPQL, null, null, null, null, null, null);
         }
         return new TransactionSearchCriteria(
+                criteria.userId(),
                 criteria.queryMode() == null ? TransactionSearchQueryMode.JPQL : criteria.queryMode(),
                 criteria.budgetName(),
                 criteria.accountName(),
@@ -239,6 +259,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     private TransactionSearchCriteria normalizeCriteriaForCache(TransactionSearchCriteria criteria) {
         return new TransactionSearchCriteria(
+                criteria.userId(),
                 criteria.queryMode(),
                 normalizeTextFilterForCache(criteria.budgetName()),
                 normalizeTextFilterForCache(criteria.accountName()),
@@ -250,6 +271,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     private TransactionSearchCriteria normalizeCriteriaForRepository(TransactionSearchCriteria criteria) {
         return new TransactionSearchCriteria(
+                criteria.userId(),
                 criteria.queryMode(),
                 normalizeTextFilterForRepository(criteria.budgetName()),
                 normalizeTextFilterForRepository(criteria.accountName()),
@@ -264,22 +286,42 @@ public class TransactionServiceImpl implements TransactionService {
         log.info("Transaction search cache MISS [{}]", preparedSearch.searchLogContext());
         log.info("Transaction search loading from DATABASE [{}]", preparedSearch.searchLogContext());
         Page<Transaction> transactions = switch (repositoryCriteria.queryMode()) {
-            case NATIVE -> transactionRepository.searchByNestedFiltersNative(
-                    repositoryCriteria.budgetName(),
-                    repositoryCriteria.accountName(),
-                    repositoryCriteria.minAmount(),
-                    repositoryCriteria.maxAmount(),
-                    repositoryCriteria.startDateTime(),
-                    repositoryCriteria.endDateTime(),
-                    preparedSearch.repositoryPageable());
-            case JPQL -> transactionRepository.searchByNestedFiltersJpql(
-                    repositoryCriteria.budgetName(),
-                    repositoryCriteria.accountName(),
-                    repositoryCriteria.minAmount(),
-                    repositoryCriteria.maxAmount(),
-                    repositoryCriteria.startDateTime(),
-                    repositoryCriteria.endDateTime(),
-                    preparedSearch.repositoryPageable());
+            case NATIVE -> preparedSearch.userId() == null
+                    ? transactionRepository.searchByNestedFiltersNative(
+                            repositoryCriteria.budgetName(),
+                            repositoryCriteria.accountName(),
+                            repositoryCriteria.minAmount(),
+                            repositoryCriteria.maxAmount(),
+                            repositoryCriteria.startDateTime(),
+                            repositoryCriteria.endDateTime(),
+                            preparedSearch.repositoryPageable())
+                    : transactionRepository.searchByNestedFiltersNative(
+                            preparedSearch.userId(),
+                            repositoryCriteria.budgetName(),
+                            repositoryCriteria.accountName(),
+                            repositoryCriteria.minAmount(),
+                            repositoryCriteria.maxAmount(),
+                            repositoryCriteria.startDateTime(),
+                            repositoryCriteria.endDateTime(),
+                            preparedSearch.repositoryPageable());
+            case JPQL -> preparedSearch.userId() == null
+                    ? transactionRepository.searchByNestedFiltersJpql(
+                            repositoryCriteria.budgetName(),
+                            repositoryCriteria.accountName(),
+                            repositoryCriteria.minAmount(),
+                            repositoryCriteria.maxAmount(),
+                            repositoryCriteria.startDateTime(),
+                            repositoryCriteria.endDateTime(),
+                            preparedSearch.repositoryPageable())
+                    : transactionRepository.searchByNestedFiltersJpql(
+                            preparedSearch.userId(),
+                            repositoryCriteria.budgetName(),
+                            repositoryCriteria.accountName(),
+                            repositoryCriteria.minAmount(),
+                            repositoryCriteria.maxAmount(),
+                            repositoryCriteria.startDateTime(),
+                            repositoryCriteria.endDateTime(),
+                            preparedSearch.repositoryPageable());
         };
 
         Page<TransactionResponse> responsePage = new PageImpl<>(
@@ -421,7 +463,10 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private Budget getBudget(Long budgetId) {
-        return budgetRepository.findById(budgetId)
+        Long currentUserId = currentUserId();
+        return (currentUserId == null
+                ? budgetRepository.findById(budgetId)
+                : budgetRepository.findByIdAndUserId(budgetId, currentUserId))
                 .orElseThrow(() -> new ResourceNotFoundException("Budget not found: " + budgetId));
     }
 
@@ -433,7 +478,10 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private Account getAccount(Long accountId) {
-        return accountRepository.findById(accountId)
+        Long currentUserId = currentUserId();
+        return (currentUserId == null
+                ? accountRepository.findById(accountId)
+                : accountRepository.findByIdAndUserId(accountId, currentUserId))
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountId));
     }
 
@@ -462,8 +510,15 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private Transaction getTransaction(Long id) {
-        return transactionRepository.findById(id)
+        Long currentUserId = currentUserId();
+        return (currentUserId == null
+                ? transactionRepository.findById(id)
+                : transactionRepository.findByIdAndAccountUserId(id, currentUserId))
                 .orElseThrow(() -> new ResourceNotFoundException(TRANSACTION_NOT_FOUND_MESSAGE_PREFIX + id));
+    }
+
+    private Long currentUserId() {
+        return AuthContext.getCurrentUserId();
     }
 
     private String normalizeDescription(String value) {
@@ -475,6 +530,7 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private record PreparedTransactionSearch(
+            Long userId,
             TransactionSearchCacheKey cacheKey,
             TransactionSearchCriteria repositoryCriteria,
             Pageable repositoryPageable,

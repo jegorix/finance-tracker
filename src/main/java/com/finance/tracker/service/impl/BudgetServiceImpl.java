@@ -1,5 +1,6 @@
 package com.finance.tracker.service.impl;
 
+import com.finance.tracker.auth.AuthContext;
 import com.finance.tracker.cache.TransactionSearchIndexInvalidator;
 import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.Category;
@@ -39,13 +40,22 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     public List<BudgetResponse> findAll() {
-        return toResponses(budgetRepository.findAll(), false);
+        Long currentUserId = currentUserId();
+        return toResponses(
+                currentUserId == null
+                        ? budgetRepository.findAll()
+                        : budgetRepository.findAllByUserId(currentUserId),
+                false);
     }
 
     @Override
     @Transactional
     public BudgetResponse create(BudgetRequest request) {
-        User user = getUser(request.getUserId());
+        Long currentUserId = currentUserId();
+        if (currentUserId != null) {
+            ensureCurrentUser(request.getUserId(), currentUserId);
+        }
+        User user = getUser(currentUserId != null ? currentUserId : request.getUserId());
         List<Category> categories = getCategoriesForUserIfPresent(request.getCategoryIds(), user.getId());
         String normalizedName = normalizeName(request.getName());
         ensureUniqueBudgetName(normalizedName, user.getId(), null);
@@ -63,7 +73,14 @@ public class BudgetServiceImpl implements BudgetService {
     @Transactional
     public BudgetResponse update(Long id, BudgetRequest request) {
         Budget budget = getBudget(id);
-        User user = getUser(request.getUserId());
+        Long currentUserId = currentUserId();
+        User user;
+        if (currentUserId != null) {
+            ensureCurrentUser(request.getUserId(), currentUserId);
+            user = getUser(currentUserId);
+        } else {
+            user = request.getUserId() != null ? getUser(request.getUserId()) : budget.getUser();
+        }
         List<Category> categories = getCategoriesForUserIfPresent(request.getCategoryIds(), user.getId());
         String normalizedName = normalizeName(request.getName());
         ensureUniqueBudgetName(normalizedName, user.getId(), budget.getId());
@@ -85,7 +102,15 @@ public class BudgetServiceImpl implements BudgetService {
     public BudgetResponse patch(Long id, BudgetUpdateRequest request) {
         Budget budget = getBudget(id);
 
-        User user = request.getUserId() != null ? getUser(request.getUserId()) : budget.getUser();
+        Long currentUserId = currentUserId();
+        Long targetUserId = request.getUserId() != null ? request.getUserId() : budget.getUser().getId();
+        User user;
+        if (currentUserId != null) {
+            ensureCurrentUser(targetUserId, currentUserId);
+            user = getUser(currentUserId);
+        } else {
+            user = request.getUserId() != null ? getUser(targetUserId) : budget.getUser();
+        }
         List<Long> targetCategoryIds = request.getCategoryIds() != null
                 ? request.getCategoryIds()
                 : budget.getCategories().stream().map(Category::getId).toList();
@@ -120,7 +145,11 @@ public class BudgetServiceImpl implements BudgetService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!budgetRepository.existsById(id)) {
+        Long currentUserId = currentUserId();
+        boolean exists = currentUserId == null
+                ? budgetRepository.existsById(id)
+                : budgetRepository.existsByIdAndUserId(id, currentUserId);
+        if (!exists) {
             throw new ResourceNotFoundException("Budget not found " + id);
         }
         budgetRepository.deleteById(id);
@@ -172,8 +201,21 @@ public class BudgetServiceImpl implements BudgetService {
     }
 
     private Budget getBudget(Long id) {
-        return budgetRepository.findById(id)
+        Long currentUserId = currentUserId();
+        return (currentUserId == null
+                ? budgetRepository.findById(id)
+                : budgetRepository.findByIdAndUserId(id, currentUserId))
                 .orElseThrow(() -> new ResourceNotFoundException("Budget not found " + id));
+    }
+
+    private Long currentUserId() {
+        return AuthContext.getCurrentUserId();
+    }
+
+    private void ensureCurrentUser(Long requestUserId, Long currentUserId) {
+        if (!currentUserId.equals(requestUserId)) {
+            throw new ResourceNotFoundException("User not found " + requestUserId);
+        }
     }
 
     private void ensureUniqueBudgetName(String name, Long userId, Long currentBudgetId) {

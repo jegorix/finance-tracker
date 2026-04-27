@@ -297,10 +297,11 @@ class TransactionServiceImplTest {
                 new BigDecimal("1.00"),
                 null,
                 null);
+        PageRequest pageable = PageRequest.of(0, 5);
 
         BadRequestException exception = assertThrows(
                 BadRequestException.class,
-                () -> service.search(criteria, PageRequest.of(0, 5)));
+                () -> service.search(criteria, pageable));
 
         assertTrue(exception.getMessage().contains("maxAmount must be greater than or equal to minAmount"));
     }
@@ -315,10 +316,11 @@ class TransactionServiceImplTest {
                 null,
                 LocalDateTime.of(2026, 3, 2, 0, 0),
                 LocalDateTime.of(2026, 3, 1, 0, 0));
+        PageRequest pageable = PageRequest.of(0, 5);
 
         BadRequestException exception = assertThrows(
                 BadRequestException.class,
-                () -> service.search(criteria, PageRequest.of(0, 5)));
+                () -> service.search(criteria, pageable));
 
         assertTrue(exception.getMessage().contains("endDateTime must be greater than or equal to startDateTime"));
     }

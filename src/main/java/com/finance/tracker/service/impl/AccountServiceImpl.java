@@ -1,5 +1,6 @@
 package com.finance.tracker.service.impl;
 
+import com.finance.tracker.auth.AuthContext;
 import com.finance.tracker.cache.TransactionSearchIndexInvalidator;
 import com.finance.tracker.domain.Account;
 import com.finance.tracker.domain.User;
@@ -43,13 +44,20 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public List<AccountResponse> findAll() {
-        return toResponses(accountRepository.findAll());
+        Long currentUserId = currentUserId();
+        return toResponses(currentUserId == null
+                ? accountRepository.findAll()
+                : accountRepository.findAllByUserId(currentUserId));
     }
 
     @Override
     @Transactional
     public AccountResponse create(AccountRequest request) {
-        User user = getUser(request.getUserId());
+        Long currentUserId = currentUserId();
+        if (currentUserId != null) {
+            ensureCurrentUser(request.getUserId(), currentUserId);
+        }
+        User user = getUser(currentUserId != null ? currentUserId : request.getUserId());
         String normalizedName = normalizeName(request.getName(), "Account name must not be blank");
         ensureUniqueAccountName(normalizedName, user.getId(), null);
         Account account = accountMapper.fromRequest(request);
@@ -65,7 +73,15 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public AccountResponse update(Long id, AccountUpdateRequest request) {
         Account account = getAccount(id);
-        User user = request.getUserId() != null ? getUser(request.getUserId()) : account.getUser();
+        Long currentUserId = currentUserId();
+        Long targetUserId = request.getUserId() != null ? request.getUserId() : account.getUser().getId();
+        User user;
+        if (currentUserId != null) {
+            ensureCurrentUser(targetUserId, currentUserId);
+            user = getUser(currentUserId);
+        } else {
+            user = request.getUserId() != null ? getUser(targetUserId) : account.getUser();
+        }
         String normalizedName = request.getName() != null
                 ? normalizeName(request.getName(), "Account name must not be blank")
                 : account.getName();
@@ -104,7 +120,11 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!accountRepository.existsById(id)) {
+        Long currentUserId = currentUserId();
+        boolean exists = currentUserId == null
+                ? accountRepository.existsById(id)
+                : accountRepository.existsByIdAndUserId(id, currentUserId);
+        if (!exists) {
             throw new ResourceNotFoundException("Account not found " + id);
         }
         accountRepository.deleteById(id);
@@ -149,8 +169,21 @@ public class AccountServiceImpl implements AccountService {
     }
 
     private Account getAccount(Long accountId) {
-        return accountRepository.findById(accountId)
+        Long currentUserId = currentUserId();
+        return (currentUserId == null
+                ? accountRepository.findById(accountId)
+                : accountRepository.findByIdAndUserId(accountId, currentUserId))
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found " + accountId));
+    }
+
+    private Long currentUserId() {
+        return AuthContext.getCurrentUserId();
+    }
+
+    private void ensureCurrentUser(Long requestUserId, Long currentUserId) {
+        if (!currentUserId.equals(requestUserId)) {
+            throw new ResourceNotFoundException("User not found " + requestUserId);
+        }
     }
 
     private void ensureUniqueAccountName(String name, Long userId, Long currentAccountId) {

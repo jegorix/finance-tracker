@@ -1,5 +1,7 @@
 package com.finance.tracker.service.impl;
 
+import com.finance.tracker.auth.AuthContext;
+import com.finance.tracker.auth.AuthSessionService;
 import com.finance.tracker.domain.Account;
 import com.finance.tracker.domain.Budget;
 import com.finance.tracker.domain.User;
@@ -20,14 +22,13 @@ import com.finance.tracker.repository.BudgetRepository;
 import com.finance.tracker.repository.UserRepository;
 import com.finance.tracker.service.UserService;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
-@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
@@ -35,15 +36,39 @@ public class UserServiceImpl implements UserService {
     private final BudgetRepository budgetRepository;
     private final UserMapper userMapper;
     private final AccountMapper accountMapper;
+    private final AuthSessionService authSessionService;
+
+    @Autowired
+    public UserServiceImpl(
+            UserRepository userRepository,
+            AccountRepository accountRepository,
+            BudgetRepository budgetRepository,
+            UserMapper userMapper,
+            AccountMapper accountMapper,
+            AuthSessionService authSessionService) {
+        this.userRepository = userRepository;
+        this.accountRepository = accountRepository;
+        this.budgetRepository = budgetRepository;
+        this.userMapper = userMapper;
+        this.accountMapper = accountMapper;
+        this.authSessionService = authSessionService;
+    }
 
     @Override
     public UserResponse findById(Long id) {
-        return userMapper.toResponse(getUser(id));
+        Long currentUserId = currentUserId();
+        if (currentUserId != null && !currentUserId.equals(id)) {
+            throw new ResourceNotFoundException("User not found " + id);
+        }
+        return userMapper.toResponse(getUser(currentUserId != null ? currentUserId : id));
     }
 
     @Override
     public List<UserResponse> findAll() {
-        return toResponses(userRepository.findAll());
+        Long currentUserId = currentUserId();
+        return currentUserId == null
+                ? toResponses(userRepository.findAll())
+                : List.of(userMapper.toResponse(getUser(currentUserId)));
     }
 
     @Override
@@ -63,7 +88,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse update(Long id, UserUpdateRequest request) {
-        User user = getUser(id);
+        User user = getCurrentUser(id);
         String username = normalizeUsername(request.getUsername());
         String email = normalizeEmail(request.getEmail(), false);
         ensureUniqueCredentials(username, email, user.getId());
@@ -80,10 +105,22 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!userRepository.existsById(id)) {
+        if (currentUserId() == null) {
+            if (!userRepository.existsById(id)) {
+                throw new ResourceNotFoundException("User not found " + id);
+            }
+            userRepository.deleteById(id);
+            return;
+        }
+
+        User user = getCurrentUser(id);
+        if (!userRepository.existsById(user.getId())) {
             throw new ResourceNotFoundException("User not found " + id);
         }
-        userRepository.deleteById(id);
+        userRepository.deleteById(user.getId());
+        if (authSessionService != null) {
+            authSessionService.invalidateAllForUser(user.getId());
+        }
     }
 
     @Override
@@ -147,6 +184,30 @@ public class UserServiceImpl implements UserService {
     private User getUser(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found " + id));
+    }
+
+    private User getCurrentUser(Long requestedUserId) {
+        Long currentUserId = currentUserId();
+        if (currentUserId == null) {
+            return getUser(requestedUserId);
+        }
+        if (!currentUserId.equals(requestedUserId)) {
+            throw new ResourceNotFoundException("User not found " + requestedUserId);
+        }
+        return getUser(currentUserId);
+    }
+
+    public UserServiceImpl(
+            UserRepository userRepository,
+            AccountRepository accountRepository,
+            BudgetRepository budgetRepository,
+            UserMapper userMapper,
+            AccountMapper accountMapper) {
+        this(userRepository, accountRepository, budgetRepository, userMapper, accountMapper, null);
+    }
+
+    private Long currentUserId() {
+        return AuthContext.getCurrentUserId();
     }
 
     private void ensureUniqueCredentials(String username, String email, Long currentUserId) {
