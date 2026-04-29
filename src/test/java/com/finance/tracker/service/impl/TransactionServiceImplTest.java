@@ -210,6 +210,7 @@ class TransactionServiceImplTest {
         LocalDateTime end = LocalDateTime.of(2026, 3, 31, 23, 59);
         TransactionSearchCriteria criteria = new TransactionSearchCriteria(
                 null,
+                null,
                 "  Food  ",
                 "  Main card  ",
                 new BigDecimal("10.00"),
@@ -245,6 +246,7 @@ class TransactionServiceImplTest {
     @Test
     void searchShouldUseNativeQueryAndNormalizeBlankFilters() {
         TransactionSearchCriteria criteria = new TransactionSearchCriteria(
+                null,
                 TransactionSearchQueryMode.NATIVE,
                 "   ",
                 " ",
@@ -290,6 +292,7 @@ class TransactionServiceImplTest {
     @Test
     void searchShouldRejectWhenMaxAmountLessThanMinAmount() {
         TransactionSearchCriteria criteria = new TransactionSearchCriteria(
+                null,
                 TransactionSearchQueryMode.JPQL,
                 null,
                 null,
@@ -309,6 +312,7 @@ class TransactionServiceImplTest {
     @Test
     void searchShouldRejectWhenEndBeforeStart() {
         TransactionSearchCriteria criteria = new TransactionSearchCriteria(
+                null,
                 TransactionSearchQueryMode.JPQL,
                 null,
                 null,
@@ -328,6 +332,7 @@ class TransactionServiceImplTest {
     @Test
     void searchShouldNormalizeAllSupportedJpqlSortProperties() {
         TransactionSearchCriteria criteria = new TransactionSearchCriteria(
+                null,
                 TransactionSearchQueryMode.JPQL,
                 null,
                 null,
@@ -372,6 +377,7 @@ class TransactionServiceImplTest {
     @Test
     void searchShouldRejectUnsupportedJpqlSortProperty() {
         TransactionSearchCriteria criteria = new TransactionSearchCriteria(
+                null,
                 TransactionSearchQueryMode.JPQL,
                 null,
                 null,
@@ -391,6 +397,7 @@ class TransactionServiceImplTest {
     @Test
     void searchShouldNormalizeAllSupportedNativeSortProperties() {
         TransactionSearchCriteria criteria = new TransactionSearchCriteria(
+                null,
                 TransactionSearchQueryMode.NATIVE,
                 null,
                 null,
@@ -449,6 +456,7 @@ class TransactionServiceImplTest {
     @Test
     void searchShouldRejectUnsupportedNativeSortProperty() {
         TransactionSearchCriteria criteria = new TransactionSearchCriteria(
+                null,
                 TransactionSearchQueryMode.NATIVE,
                 null,
                 null,
