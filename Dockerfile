@@ -11,5 +11,5 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/target/*.jar /app/app.jar
 
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+EXPOSE 10000
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-10000} -jar /app/app.jar"]
